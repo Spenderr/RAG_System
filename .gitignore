@@ -1,0 +1,36 @@
+# Environment variables (CRITICAL: Never commit API keys!)
+.env
+.env.*
+!.env.example
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Vector Databases (Local ChromaDB directories)
+db/
+dbv1/
+dbv2/
+*.sqlite3
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Exported large JSON outputs
+chunks_export.json
+rag_results.json
