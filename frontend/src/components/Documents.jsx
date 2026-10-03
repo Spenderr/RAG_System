@@ -63,6 +63,12 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
   useEffect(() => {
     fetchDocuments();
     fetchOrganizations();
+    const handleUpdate = () => {
+      fetchDocuments();
+      fetchOrganizations();
+    };
+    window.addEventListener('mainchunk_docs_updated', handleUpdate);
+    return () => window.removeEventListener('mainchunk_docs_updated', handleUpdate);
   }, []);
 
   useEffect(() => {

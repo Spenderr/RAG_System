@@ -3,7 +3,7 @@ import {
   Building2, Plus, FileText, Search, Trash2, FolderOpen,
   Edit2, Check, X, Eye, Loader2, Image as ImageIcon,
   FolderPlus, Folder, Layers, HelpCircle, RefreshCw,
-  ChevronRight, ArrowRight, Tag, MoreHorizontal, Sparkles,
+  ChevronRight, ChevronLeft, ArrowRight, ArrowLeft, Tag, MoreHorizontal, Sparkles,
   ZoomIn, ZoomOut, Download, MessageSquare, Copy, StickyNote,
   Send, Share2, Sparkle, CheckSquare, Square, RotateCcw, Maximize2, ExternalLink
 } from 'lucide-react';
@@ -485,6 +485,14 @@ const ExplorerGrid = ({
       {selectedFolderFilter !== 'all' && selectedFolderFilter !== '__unfolded__' && (
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200/90">
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setSelectedFolderFilter('all')}
+              className="px-2.5 py-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-slate-200/80 shadow-2xs cursor-pointer flex items-center gap-1 text-xs font-semibold bg-white"
+              title="Tüm dokümanlara geri dön"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Geri</span>
+            </button>
             <div className="w-8 h-8 rounded-xl bg-amber-100/90 text-amber-700 flex items-center justify-center shadow-2xs">
               <Folder className="w-4 h-4" />
             </div>
@@ -597,16 +605,100 @@ const ExplorerGrid = ({
 // ─────────────────────────────────────────────────────────────────
 // Main Organizations Component
 // ─────────────────────────────────────────────────────────────────
-const Organizations = ({ onGoToInspector }) => {
+const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClearInitialOrgId }) => {
   const [organizations, setOrganizations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedOrgId, setSelectedOrgId] = useState(null);
+  const [selectedOrgId, setSelectedOrgId] = useState(initialOrgId || null);
   const [orgDocs, setOrgDocs] = useState({});
   const [loadingDocs, setLoadingDocs] = useState(null);
   const [search, setSearch] = useState('');
   const [docSearch, setDocSearch] = useState('');
   const [selectedFolderFilter, setSelectedFolderFilter] = useState('all');
   const [previewDoc, setPreviewDoc] = useState(null);
+
+  // Navigation History State (Finder / Explorer style Back & Forward)
+  const [navState, setNavState] = useState({ history: [], index: -1 });
+  const isNavigatingRef = useRef(false);
+
+  // Sync navigation history whenever selectedOrgId or selectedFolderFilter changes
+  useEffect(() => {
+    if (!selectedOrgId) return;
+
+    if (isNavigatingRef.current) {
+      isNavigatingRef.current = false;
+      return;
+    }
+
+    const currentEntry = { orgId: selectedOrgId, folder: selectedFolderFilter || 'all' };
+
+    setNavState(prev => {
+      const current = prev.history[prev.index];
+      if (current && current.orgId === currentEntry.orgId && current.folder === currentEntry.folder) {
+        return prev;
+      }
+      const newHistory = [...prev.history.slice(0, prev.index + 1), currentEntry];
+      return {
+        history: newHistory,
+        index: newHistory.length - 1,
+      };
+    });
+  }, [selectedOrgId, selectedFolderFilter]);
+
+  const canGoBack = navState.index > 0;
+  const canGoForward = navState.index >= 0 && navState.index < navState.history.length - 1;
+
+  const handleGoBack = () => {
+    if (!canGoBack) return;
+    const targetIndex = navState.index - 1;
+    const target = navState.history[targetIndex];
+    if (target) {
+      isNavigatingRef.current = true;
+      setNavState(prev => ({ ...prev, index: targetIndex }));
+      if (target.orgId !== selectedOrgId) {
+        setSelectedOrgId(target.orgId);
+      }
+      setSelectedFolderFilter(target.folder);
+    }
+  };
+
+  const handleGoForward = () => {
+    if (!canGoForward) return;
+    const targetIndex = navState.index + 1;
+    const target = navState.history[targetIndex];
+    if (target) {
+      isNavigatingRef.current = true;
+      setNavState(prev => ({ ...prev, index: targetIndex }));
+      if (target.orgId !== selectedOrgId) {
+        setSelectedOrgId(target.orgId);
+      }
+      setSelectedFolderFilter(target.folder);
+    }
+  };
+
+  // Keyboard navigation shortcuts (Alt+Left/Right, Cmd+[ / Cmd+])
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable) {
+        return;
+      }
+      if ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '[')) {
+        e.preventDefault();
+        handleGoBack();
+      } else if ((e.altKey && e.key === 'ArrowRight') || ((e.metaKey || e.ctrlKey) && e.key === ']')) {
+        e.preventDefault();
+        handleGoForward();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canGoBack, canGoForward, navState]);
+
+  useEffect(() => {
+    if (initialOrgId) {
+      setSelectedOrgId(initialOrgId);
+      onClearInitialOrgId?.();
+    }
+  }, [initialOrgId]);
 
   // Org CRUD
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -952,7 +1044,15 @@ const Organizations = ({ onGoToInspector }) => {
     }
   };
 
-  useEffect(() => { fetchOrganizations(); }, []);
+  useEffect(() => {
+    fetchOrganizations();
+    const handleUpdate = () => {
+      fetchOrganizations();
+      if (selectedOrgId) fetchOrgDocs(selectedOrgId);
+    };
+    window.addEventListener('mainchunk_docs_updated', handleUpdate);
+    return () => window.removeEventListener('mainchunk_docs_updated', handleUpdate);
+  }, [selectedOrgId]);
 
   const fetchOrgDocs = async (orgId) => {
     if (!orgId) return;
@@ -973,7 +1073,9 @@ const Organizations = ({ onGoToInspector }) => {
   // Load docs whenever org selection changes
   useEffect(() => {
     if (selectedOrgId) {
-      setSelectedFolderFilter('all');
+      if (!isNavigatingRef.current) {
+        setSelectedFolderFilter('all');
+      }
       setDocSearch('');
       setPreviewDoc(null);
       if (!orgDocs[selectedOrgId]) {
@@ -1361,7 +1463,75 @@ const Organizations = ({ onGoToInspector }) => {
         ) : (
           <>
             {/* Center header */}
-            <div className="px-5 pt-5 pb-3 border-b border-slate-200 bg-white shrink-0">
+            <div className="px-5 pt-4 pb-3 border-b border-slate-200 bg-white shrink-0">
+              {/* Explorer Navigation Toolbar (Finder-style Back / Forward + Breadcrumb path) */}
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Back & Forward button pill */}
+                  <div className="flex items-center bg-slate-100/90 rounded-xl p-0.5 border border-slate-200/80 shadow-2xs shrink-0">
+                    <button
+                      onClick={handleGoBack}
+                      disabled={!canGoBack}
+                      className={`p-1.5 rounded-lg transition-all ${
+                        canGoBack
+                          ? 'text-slate-700 hover:text-indigo-600 hover:bg-white shadow-2xs cursor-pointer active:scale-95'
+                          : 'text-slate-300 cursor-not-allowed opacity-40'
+                      }`}
+                      title={canGoBack ? 'Geri git (Alt + Sol Ok)' : 'Geri gidilemez'}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={handleGoForward}
+                      disabled={!canGoForward}
+                      className={`p-1.5 rounded-lg transition-all ${
+                        canGoForward
+                          ? 'text-slate-700 hover:text-indigo-600 hover:bg-white shadow-2xs cursor-pointer active:scale-95'
+                          : 'text-slate-300 cursor-not-allowed opacity-40'
+                      }`}
+                      title={canGoForward ? 'İleri git (Alt + Sağ Ok)' : 'İleri gidilemez'}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Breadcrumbs path */}
+                  <div className="flex items-center gap-1 text-xs text-slate-500 min-w-0 truncate">
+                    <button
+                      onClick={() => setSelectedFolderFilter('all')}
+                      className={`flex items-center gap-1.5 font-medium px-2 py-1 rounded-lg transition-all ${
+                        selectedFolderFilter === 'all'
+                          ? 'text-indigo-600 font-bold bg-indigo-50/80'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer'
+                      }`}
+                      title={`${selectedOrg.name} tüm dosyaları`}
+                    >
+                      <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: selectedOrg.color }} />
+                      <span className="truncate max-w-[140px] sm:max-w-[220px]">{selectedOrg.name}</span>
+                    </button>
+
+                    {selectedFolderFilter !== 'all' && (
+                      <>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 font-semibold border border-amber-200/60 shadow-2xs min-w-0">
+                          <Folder className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span className="truncate max-w-[160px] sm:max-w-[240px]">
+                            {selectedFolderFilter === '__unfolded__' ? 'Klasörsüz Dosyalar' : selectedFolderFilter}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* History position badge */}
+                {navState.history.length > 1 && (
+                  <div className="hidden sm:flex items-center text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shrink-0">
+                    Geçmiş: {navState.index + 1}/{navState.history.length}
+                  </div>
+                )}
+              </div>
+
               {/* Org title row */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -1408,15 +1578,6 @@ const Organizations = ({ onGoToInspector }) => {
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={openNoteModal}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all shadow-xs shadow-emerald-600/20 active:scale-95 cursor-pointer"
-                    title="WhatsApp mesajları veya portföy notu yapıştır"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>+ WhatsApp / Not Ekle</span>
-                  </button>
-
                   <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                     {selectedOrg.document_count} dok.
                   </span>

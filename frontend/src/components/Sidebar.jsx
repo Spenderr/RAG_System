@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Upload, Database, Zap, Lightbulb, Files, Building2, Layers } from 'lucide-react';
+import { Upload, Database, Zap, Lightbulb, Files, Building2, Layers, LayoutDashboard } from 'lucide-react';
 
 const Sidebar = ({ activeView, setActiveView, onShowTour }) => {
   const [stats, setStats] = useState({ documents: 0, vectors: 0, organizations: 0 });
@@ -17,9 +17,10 @@ const Sidebar = ({ activeView, setActiveView, onShowTour }) => {
   }, [activeView]);
 
   const navItems = [
-    { id: 'upload', label: 'Upload & Chat', icon: Upload },
-    { id: 'organizations', label: 'Organizations', icon: Building2 },
-    { id: 'documents', label: 'Documents', icon: Files },
+    { id: 'dashboard', label: 'Ana Sayfa', icon: LayoutDashboard },
+    { id: 'upload', label: 'Yükle & AI Sohbet', icon: Upload },
+    { id: 'organizations', label: 'Kurumlar & Portföyler', icon: Building2 },
+    { id: 'documents', label: 'Belgeler', icon: Files },
     { id: 'inspector', label: 'Chunk Inspector', icon: Database },
   ];
 

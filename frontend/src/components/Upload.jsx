@@ -3,7 +3,7 @@ import {
   Upload as UploadIcon, File, CheckCircle2, Loader2,
   ArrowRight, X, Send, Trash2, ChevronDown, ChevronRight, BookOpen,
   Building2, Tag, Eye, FileText, ExternalLink, Image as ImageIcon,
-  Plus, Sparkles, Check, Sparkle, AlertCircle, RefreshCw, Copy,
+  Plus, Sparkles, Check, Sparkle, AlertCircle, AlertTriangle, RefreshCw, Copy,
   Folder, FolderOpen, FolderPlus, Layers
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -22,7 +22,89 @@ const STEPS = [
 const VALID_EXTENSIONS = ['pdf', 'txt', 'png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'];
 
 // ── Upload + Chat Component ───────────────────────────────────
-const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
+const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChatPrompt, onClearInitialPrompt, initialMode, onNavigateToOrgs }) => {
+  // Ingestion Mode ('files' | 'text')
+  const [ingestionMode, setIngestionMode] = useState(initialMode || 'files');
+
+  // Direct Text / Note Ingestion State
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteOrgId, setNoteOrgId] = useState('');
+  const [noteFolder, setNoteFolder] = useState('');
+  const [noteFormatWithAi, setNoteFormatWithAi] = useState(true);
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSuccess, setNoteSuccess] = useState(null);
+  const [noteError, setNoteError] = useState('');
+
+  useEffect(() => {
+    if (initialMode) setIngestionMode(initialMode);
+  }, [initialMode]);
+
+  useEffect(() => {
+    fetchOrgs();
+  }, []);
+
+  const handleSaveTextNote = async (e) => {
+    e?.preventDefault();
+    if (!noteTitle.trim()) {
+      setNoteError('Lütfen bir doküman başlığı veya dosya adı girin.');
+      return;
+    }
+    if (!noteContent.trim()) {
+      setNoteError('Lütfen doküman metnini veya portföy notunu girin.');
+      return;
+    }
+
+    setNoteSaving(true);
+    setNoteError('');
+    setNoteSuccess(null);
+
+    try {
+      const res = await fetch('/api/documents/note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: noteTitle.trim(),
+          content: noteContent.trim(),
+          org_id: noteOrgId === '__unassigned__' ? undefined : (noteOrgId || undefined),
+          folder: noteFolder.trim() || undefined,
+          format_with_ai: noteFormatWithAi,
+          doc_type: 'note',
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Not kaydedilemedi.');
+      }
+
+      const data = await res.json();
+      const targetOrg = orgs.find(o => o.id === (noteOrgId || data.org_id));
+
+      setNoteSuccess({
+        filename: data.filename,
+        orgId: data.org_id,
+        orgName: targetOrg?.name || (noteOrgId === '__unassigned__' ? 'Atanmamış' : 'Genel Portföy'),
+        folder: data.folder || 'Ana Dizin',
+        charCount: data.char_count,
+        chunkCount: data.chunk_count,
+      });
+
+      setNoteTitle('');
+      setNoteContent('');
+      setNoteFolder('');
+
+      // Notify system of new document
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
+      await fetchOrgs();
+    } catch (err) {
+      console.error('Failed to save text note:', err);
+      setNoteError(err.message || 'Doküman kaydedilirken bir hata oluştu.');
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
   // Multi-file upload state
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -73,6 +155,13 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (initialChatPrompt) {
+      setInput(initialChatPrompt);
+      onClearInitialPrompt?.();
+    }
+  }, [initialChatPrompt]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -568,10 +657,38 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
       if (!res.ok) throw new Error('Failed');
 
       const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: data.answer, sources: data.sources },
-      ]);
+      setMessages((prev) => {
+        let updated = prev;
+        // If the server response indicates completion or cancellation of a pending action (e.g. user typed "evet sil")
+        if (data.action?.status === 'completed') {
+          updated = updated.map((m) =>
+            m.action && m.action.status === 'pending'
+              ? { ...m, action: { ...m.action, status: 'completed', resultMessage: data.action.resultMessage } }
+              : m
+          );
+          window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
+        } else if (data.action?.status === 'cancelled') {
+          updated = updated.map((m) =>
+            m.action && m.action.status === 'pending'
+              ? { ...m, action: { ...m.action, status: 'cancelled' } }
+              : m
+          );
+        }
+
+        return [
+          ...updated,
+          {
+            role: 'assistant',
+            content: data.answer,
+            sources: data.sources || [],
+            action: data.action || null,
+          },
+        ];
+      });
+
+      if (data.action?.status === 'completed') {
+        fetchOrgs();
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -580,6 +697,79 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleExecuteAction = async (msgIndex, action) => {
+    try {
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === msgIndex
+            ? { ...m, action: { ...m.action, status: 'executing' } }
+            : m
+        )
+      );
+
+      const res = await fetch('/api/chat/action/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_id: action.action_id,
+          action_type: action.type,
+          target_org_id: action.target_org_id,
+          target_folder: action.target_folder,
+          target_filenames: action.target_filenames || [],
+          delete_folder: true,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Silme işlemi sunucuda tamamlanamadı.');
+      const result = await res.json();
+
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === msgIndex
+            ? {
+                ...m,
+                action: {
+                  ...m.action,
+                  status: 'completed',
+                  resultMessage: result.message || 'Silme işlemi başarıyla tamamlandı.',
+                  completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                },
+              }
+            : m
+        )
+      );
+
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
+      fetchOrgs();
+    } catch (err) {
+      console.error('Error executing chat action:', err);
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === msgIndex
+            ? { ...m, action: { ...m.action, status: 'error', errorMsg: err.message } }
+            : m
+        )
+      );
+    }
+  };
+
+  const handleCancelAction = (msgIndex) => {
+    setMessages((prev) =>
+      prev.map((m, i) =>
+        i === msgIndex
+          ? {
+              ...m,
+              action: {
+                ...m.action,
+                status: 'cancelled',
+                cancelledAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              },
+            }
+          : m
+      )
+    );
   };
 
   const handleClear = async () => {
@@ -627,14 +817,48 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
         style={{ width: `${uploadWidth}px` }}
         className="shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto p-6 custom-scrollbar shadow-xs"
       >
-        <div className="mb-5">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Document Ingestion</h1>
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Doküman Girişi</h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            Batch upload PDFs, images (AI OCR), or text files into vector storage
+            PDF, görsel (OCR) veya doğrudan metin notlarını portföy ve vektör hafızasına aktarın
           </p>
         </div>
 
-        {/* Drop zone with multiple file support */}
+        {/* Ingestion Mode Segmented Tabs */}
+        <div className="flex bg-slate-100 p-1 rounded-xl mb-5 border border-slate-200/80 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIngestionMode('files')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+              ingestionMode === 'files'
+                ? 'bg-white text-indigo-600 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <UploadIcon className="w-3.5 h-3.5" />
+            <span>Dosya Yükle</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIngestionMode('text');
+              fetchOrgs();
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+              ingestionMode === 'text'
+                ? 'bg-white text-indigo-600 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Metin / Not Ekle (.txt)</span>
+          </button>
+        </div>
+
+        {/* ── MODE 1: MULTI-FILE UPLOAD ── */}
+        {ingestionMode === 'files' && (
+          <>
+            {/* Drop zone with multiple file support */}
         <div
           className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-center min-h-[160px]
             ${
@@ -907,6 +1131,252 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
             )}
           </div>
         )}
+      </>
+    )}
+
+        {/* ── MODE 2: DIRECT TEXT / NOTE INGESTION (.txt) ── */}
+        {ingestionMode === 'text' && (
+          <form onSubmit={handleSaveTextNote} className="space-y-4">
+            {/* Success Banner */}
+            {noteSuccess && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl animate-in fade-in duration-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-emerald-950">
+                      "{noteSuccess.filename}" Başarıyla Eklendi!
+                    </p>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      {noteSuccess.orgName} &gt; {noteSuccess.folder} · {noteSuccess.chunkCount} vektör parçası
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setNoteSuccess(null)}
+                        className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
+                      >
+                        Yeni Metin Yaz
+                      </button>
+                      {onViewDocument && (
+                        <button
+                          type="button"
+                          onClick={() => onViewDocument(noteSuccess.filename)}
+                          className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Görüntüle</span>
+                        </button>
+                      )}
+                      {onNavigateToOrgs && (
+                        <button
+                          type="button"
+                          onClick={() => onNavigateToOrgs(noteSuccess.orgId)}
+                          className="px-2.5 py-1 text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Building2 className="w-3 h-3" />
+                          <span>Kurumlarda Aç</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNoteSuccess(null)}
+                    className="text-emerald-400 hover:text-emerald-700 p-0.5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Error Banner */}
+            {noteError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{noteError}</span>
+                </div>
+                <button type="button" onClick={() => setNoteError('')} className="text-red-400 hover:text-red-700">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Title / Filename Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-800">
+                  Doküman / Not Başlığı <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">.txt formatında kaydedilir</span>
+              </div>
+              <input
+                type="text"
+                value={noteTitle}
+                onChange={(e) => setNoteTitle(e.target.value)}
+                placeholder="Örn: Silivri Arsa Görüşmesi, Nuran Hanım Portföy Notu..."
+                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 focus:bg-white font-medium transition-all"
+                disabled={noteSaving}
+              />
+            </div>
+
+            {/* Target Organization & Folder / Portfolio Selection */}
+            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-indigo-600" />
+                <span className="text-xs font-bold text-slate-800">Hedef Portföy & Kurum</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {/* Org dropdown */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Kurum / Portföy Sahibi
+                  </label>
+                  <select
+                    value={noteOrgId}
+                    onChange={(e) => {
+                      setNoteOrgId(e.target.value);
+                      setNoteFolder('');
+                    }}
+                    className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 font-medium cursor-pointer"
+                    disabled={noteSaving}
+                  >
+                    <option value="">-- Kurum Seçin (veya AI otomatik eşlesin) --</option>
+                    <option value="__unassigned__">Atanmamış (Genel Havuz)</option>
+                    {orgs.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Folder / Portfolio selector / input */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    Klasör / Portföy
+                  </label>
+                  <input
+                    type="text"
+                    list="note-folder-datalist"
+                    value={noteFolder}
+                    onChange={(e) => setNoteFolder(e.target.value)}
+                    placeholder={
+                      noteOrgId && orgs.find((o) => o.id === noteOrgId)?.folders?.length > 0
+                        ? "Mevcut bir klasör seçin veya yeni yazın..."
+                        : "Örn: İzmir dikili 35-65, Arsa Portföyü..."
+                    }
+                    className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 font-medium"
+                    disabled={noteSaving}
+                  />
+                  <datalist id="note-folder-datalist">
+                    {noteOrgId &&
+                      orgs
+                        .find((o) => o.id === noteOrgId)
+                        ?.folders?.map((f) => (
+                          <option key={f} value={f} />
+                        ))}
+                  </datalist>
+
+                  {/* Quick folder pill suggestions */}
+                  {noteOrgId &&
+                    orgs.find((o) => o.id === noteOrgId)?.folders?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {orgs
+                          .find((o) => o.id === noteOrgId)
+                          .folders.map((f) => (
+                            <button
+                              key={f}
+                              type="button"
+                              onClick={() => setNoteFolder(f)}
+                              className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                                noteFolder === f
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300 font-bold'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              📁 {f}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                </div>
+              </div>
+            </div>
+
+            {/* Content Textarea */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-800">
+                  Metin / Not İçeriği <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {noteContent.length.toLocaleString('tr-TR')} karakter
+                </span>
+              </div>
+              <textarea
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+                placeholder="WhatsApp yazışmalarını, görüşme notlarını, tapu/ada-parsel bilgilerini veya portföy şartlarını buraya yapıştırın veya yazın..."
+                rows={9}
+                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:outline-none focus:border-indigo-500 focus:bg-white font-mono leading-relaxed transition-all resize-y min-h-[160px]"
+                disabled={noteSaving}
+              />
+            </div>
+
+            {/* AI Auto-Format Option */}
+            <div
+              onClick={() => !noteSaving && setNoteFormatWithAi(!noteFormatWithAi)}
+              className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                checked={noteFormatWithAi}
+                onChange={(e) => setNoteFormatWithAi(e.target.checked)}
+                className="mt-0.5 accent-indigo-600 cursor-pointer"
+                disabled={noteSaving}
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="text-xs font-bold text-slate-800">
+                    Yapay Zeka (AI) ile Biçimlendir &amp; Özetle
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
+                  Kişileri, telefonları, fiyatları ve lokasyon detaylarını tespit eder, düzenli başlıklar ve maddeler halinde yapılandırır.
+                </p>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={noteSaving || !noteTitle.trim() || !noteContent.trim()}
+              className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                noteSaving || !noteTitle.trim() || !noteContent.trim()
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                  : 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white shadow-indigo-600/20 cursor-pointer'
+              }`}
+            >
+              {noteSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Vektörleştiriliyor &amp; Kaydediliyor...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  <span>Metni .txt Olarak Kaydet ve Portföye Ekle</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Resizer Handle */}
@@ -923,60 +1393,83 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
       {/* ═══ RIGHT: Chat ═══ */}
       <div className="flex-1 flex flex-col min-w-0 bg-slate-50">
         {/* Chat header */}
-        <div className="px-6 py-4 flex justify-between items-center border-b border-slate-200 bg-white shrink-0 shadow-2xs">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">AI Knowledge Assistant</h2>
-            <p className="text-xs text-slate-400">
-              Ask questions, compare institutions, and ground answers with sources
-            </p>
+        <div className="px-5 py-3.5 flex justify-between items-center border-b border-slate-200 bg-white shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate">Yapay Zeka Asistanı</h2>
+              <p className="text-[11px] text-slate-400 truncate">Portföy ve belgeleriniz hakkında sorularınızı yanıtlar</p>
+            </div>
           </div>
           {messages.length > 0 && (
             <button
               onClick={handleClear}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-slate-200"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+              title="Sohbet geçmişini temizle"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Clear History
+              <span>Temizle</span>
             </button>
           )}
         </div>
 
         {/* Chat messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-5 space-y-3.5 custom-scrollbar">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400">
-              <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-indigo-500 mb-3">
-                <BookOpen className="w-7 h-7" />
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 max-w-sm mx-auto">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 shadow-2xs">
+                <Sparkles className="w-5 h-5" />
               </div>
-              <h3 className="text-sm font-bold text-slate-700 mb-1">Ready for your questions</h3>
-              <p className="text-xs text-slate-400 max-w-sm text-center">
-                Ask about pricing, clauses, suppliers, or compare different documents.
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800 mb-1">Nasıl yardımcı olabilirim?</h3>
+              <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                Portföyleriniz, tapu kayıtlarınız, sözleşmeleriniz ve notlarınız hakkında merak ettiğiniz her şeyi sorabilirsiniz.
               </p>
+              <div className="w-full space-y-1.5">
+                {[
+                  "Nuran Hanım'ın portföyündeki şartlar neler?",
+                  "Silivri'deki arsa ile ilgili belgeleri özetle.",
+                  "En son eklenen portföy notlarında neler var?"
+                ].map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setInput(prompt);
+                    }}
+                    className="w-full text-left p-2.5 text-xs text-slate-600 bg-white hover:bg-indigo-50/70 hover:text-indigo-700 rounded-xl border border-slate-200/80 hover:border-indigo-200 transition-all shadow-2xs flex items-center justify-between group cursor-pointer"
+                  >
+                    <span className="truncate">{prompt}</span>
+                    <ArrowRight className="w-3 h-3 text-slate-300 group-hover:text-indigo-500 shrink-0 ml-2" />
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             messages.map((msg, idx) => (
               <MessageBubble
                 key={idx}
+                msgIndex={idx}
                 message={msg}
                 onViewDocument={onViewDocument}
                 onGoToInspector={onGoToInspector}
                 onTraceGrounding={onTraceGrounding}
+                onExecuteAction={handleExecuteAction}
+                onCancelAction={handleCancelAction}
               />
             ))
           )}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-5 py-4 flex items-center gap-2 shadow-xs">
+              <div className="bg-white border border-slate-200/80 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5 shadow-2xs">
                 <div
-                  className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce"
+                  className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce"
                   style={{ animationDelay: '0ms' }}
                 />
                 <div
-                  className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce"
+                  className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce"
                   style={{ animationDelay: '150ms' }}
                 />
                 <div
-                  className="w-2 h-2 rounded-full bg-indigo-600 animate-bounce"
+                  className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce"
                   style={{ animationDelay: '300ms' }}
                 />
               </div>
@@ -986,10 +1479,10 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
         </div>
 
         {/* Chat input */}
-        <div className="p-4 border-t border-slate-200 bg-white">
+        <div className="p-3.5 border-t border-slate-200 bg-white">
           <form
             onSubmit={handleSend}
-            className="relative bg-slate-50 border border-slate-200 rounded-2xl flex items-end p-1.5 focus-within:border-indigo-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all shadow-xs"
+            className="relative bg-slate-50 border border-slate-200/90 rounded-2xl flex items-end p-1.5 focus-within:border-indigo-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all"
           >
             <textarea
               value={input}
@@ -1000,18 +1493,23 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding }) => {
                   handleSend();
                 }
               }}
-              placeholder="Ask anything about your documents..."
-              className="w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-400 resize-none py-2.5 px-3 max-h-32 min-h-[44px] text-xs leading-relaxed"
+              placeholder="Belgeleriniz hakkında bir soru sorun..."
+              className="w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-400 resize-none py-2 px-3 max-h-32 min-h-[40px] text-xs leading-relaxed"
               rows={1}
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl transition-all shrink-0 shadow-xs shadow-indigo-600/20"
+              className="p-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl transition-all shrink-0 cursor-pointer disabled:cursor-not-allowed shadow-2xs"
+              title="Gönder"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
             </button>
           </form>
+          <div className="flex justify-between items-center px-1 mt-1.5 text-[10px] text-slate-400">
+            <span>Enter: Gönder · Shift + Enter: Yeni satır</span>
+            <span>RAG Hafızası devrede</span>
+          </div>
         </div>
       </div>
 
@@ -1376,7 +1874,7 @@ const SourceCitationBadge = ({ text, onViewDocument, onTraceGrounding }) => {
   const info = extractSourceInfo(text);
 
   if (!info) {
-    return <em className="italic text-slate-600">{text}</em>;
+    return <em className="italic text-slate-500">{text}</em>;
   }
 
   const { docName, page, org } = info;
@@ -1391,30 +1889,186 @@ const SourceCitationBadge = ({ text, onViewDocument, onTraceGrounding }) => {
           onViewDocument({ docName, page });
         }
       }}
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 my-0.5 mx-1 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-950 border border-indigo-200/80 hover:border-indigo-400 rounded-lg shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer group not-italic align-middle"
+      className="inline-flex items-center gap-1 px-2 py-0.5 my-0.5 mx-0.5 text-[11px] font-medium bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200/80 hover:border-indigo-300 rounded-md transition-all cursor-pointer not-italic align-middle"
       title={`Tıkla: ${docName}${page && page > 1 ? ` (Sayfa ${page})` : ''} dokümanını aç`}
     >
-      <FileText className="w-3.5 h-3.5 text-indigo-500 group-hover:text-indigo-700 shrink-0" />
-      <span className="font-bold underline decoration-indigo-300 group-hover:decoration-indigo-600 underline-offset-2 truncate max-w-[220px]">
-        {docName}
-      </span>
+      <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
+      <span className="truncate max-w-[170px]">{docName}</span>
       {page && page > 1 && (
-        <span className="px-1.5 py-0.5 bg-indigo-200/80 text-indigo-900 rounded text-[10px] font-mono font-bold">
-          s.{page}
-        </span>
+        <span className="text-[10px] text-slate-400 font-mono">s.{page}</span>
       )}
-      {org && org !== 'Unassigned' && (
-        <span className="text-[10px] text-slate-500 font-normal truncate max-w-[120px]">
-          · {org}
-        </span>
-      )}
-      <ExternalLink className="w-3 h-3 text-indigo-400 group-hover:text-indigo-600 shrink-0 ml-0.5" />
     </button>
   );
 };
 
+// ── Interactive Action Confirmation Card (e.g. for Deleting Portfolios/Docs via Chat) ─
+const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
+  if (!action) return null;
+
+  const isPending = !action.status || action.status === 'pending';
+  const isExecuting = action.status === 'executing';
+  const isCompleted = action.status === 'completed';
+  const isCancelled = action.status === 'cancelled';
+  const isError = action.status === 'error';
+
+  if (isCompleted) {
+    return (
+      <div className="mt-4 p-4 rounded-2xl border border-emerald-200 bg-emerald-50/80 shadow-xs transition-all">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                <span>İşlem Başarıyla Tamamlandı</span>
+                <span className="text-[10px] bg-emerald-200/80 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">
+                  Silindi
+                </span>
+              </div>
+              <div className="text-[11px] text-emerald-700 font-medium mt-0.5 truncate">
+                {action.resultMessage || `'${action.target_folder || 'Seçilen öğeler'}' sistemden kalıcı olarak kaldırıldı.`}
+              </div>
+            </div>
+          </div>
+          {action.completedAt && (
+            <span className="text-[10px] text-emerald-600 font-mono bg-emerald-100/90 px-2 py-0.5 rounded-md shrink-0">
+              {action.completedAt}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (isCancelled) {
+    return (
+      <div className="mt-4 p-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 text-xs flex items-center justify-between shadow-2xs">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-slate-200/80 flex items-center justify-center text-slate-500">
+            <X className="w-3 h-3" />
+          </div>
+          <span className="text-[11px] font-medium text-slate-600">Silme işlemi iptal edildi. Hiçbir dosya veya kayıt silinmedi.</span>
+        </div>
+        <span className="text-[10px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-md">
+          İptal Edildi
+        </span>
+      </div>
+    );
+  }
+
+  if (isExecuting) {
+    return (
+      <div className="mt-4 p-4 rounded-2xl border border-rose-200 bg-rose-50/70 flex items-center justify-center gap-3 text-rose-800 text-xs font-semibold shadow-xs">
+        <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+        <span>Kalıcı olarak siliniyor, vektör veritabanı ve klasörler güncelleniyor...</span>
+      </div>
+    );
+  }
+
+  // Pending State: Prominent interactive confirmation card
+  return (
+    <div className="mt-4 p-4 rounded-2xl border-2 border-rose-200/90 bg-gradient-to-b from-rose-50/70 to-rose-50/30 shadow-xs text-slate-800 transition-all">
+      {/* Card Header */}
+      <div className="flex items-center justify-between gap-3 pb-3 mb-3 border-b border-rose-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs shrink-0">
+            <Trash2 className="w-4 h-4 text-rose-600" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-900 tracking-tight">
+              {action.title || 'Silme İşlemi Onayı'}
+            </div>
+            <div className="text-[11px] text-rose-600 font-medium">
+              Sistemden kalıcı olarak kaldırma işlemi
+            </div>
+          </div>
+        </div>
+        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs">
+          Onay Bekliyor
+        </span>
+      </div>
+
+      {/* Target Details Summary Box */}
+      <div className="space-y-2 mb-3 bg-white/90 p-3 rounded-xl border border-rose-100 shadow-2xs">
+        {action.target_org_name && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-400 font-medium text-[11px] shrink-0">Kurum:</span>
+            <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70">
+              {action.target_org_name}
+            </span>
+          </div>
+        )}
+
+        {action.target_folder && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-400 font-medium text-[11px] shrink-0">Portföy / Klasör:</span>
+            <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 flex items-center gap-1.5">
+              <Folder className="w-3.5 h-3.5 text-indigo-500" />
+              {action.target_folder}
+            </span>
+          </div>
+        )}
+
+        {action.target_filenames && action.target_filenames.length > 0 && (
+          <div className="pt-1">
+            <div className="text-[11px] font-medium text-slate-500 mb-1.5 flex items-center justify-between">
+              <span>Silinecek Dokümanlar ({action.target_filenames.length}):</span>
+              <span className="text-[10px] text-rose-500 font-mono">ChromaDB + Disk</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar p-0.5">
+              {action.target_filenames.map((fname, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 text-[11px] bg-slate-50 border border-slate-200/80 px-2 py-1 rounded-lg text-slate-700 font-medium shadow-2xs hover:bg-slate-100 transition-colors"
+                  title={fname}
+                >
+                  <FileText className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="truncate max-w-[210px]">{fname}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Warning Notice */}
+      <div className="flex items-start gap-2 mb-3.5 text-[11px] text-rose-800 bg-rose-100/70 p-2.5 rounded-xl border border-rose-200">
+        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+        <div className="leading-snug">
+          <strong>Dikkat:</strong> Bu işlem geri alınamaz. İlgili portföy, tapu/sözleşme görselleri ve vektör indeksleri sistemden tamamen temizlenecektir.
+        </div>
+      </div>
+
+      {isError && (
+        <div className="mb-3 text-[11px] text-red-600 font-medium bg-red-50 p-2 rounded-lg border border-red-200">
+          Hata: {action.errorMsg || 'Silme işlemi gerçekleştirilemedi.'}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={() => onExecute(msgIndex, action)}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs shadow-xs hover:shadow-sm active:scale-[0.99] transition-all cursor-pointer"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>Evet, Sistemden Sil</span>
+        </button>
+        <button
+          onClick={() => onCancel(msgIndex)}
+          className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 shadow-2xs active:scale-[0.99] transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <X className="w-3.5 h-3.5 text-slate-400" />
+          <span>Vazgeç / İptal</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ── Message Bubble with Clean Typography & Clickable Citations ─
-const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGrounding }) => {
+const MessageBubble = ({ message, msgIndex, onViewDocument, onGoToInspector, onTraceGrounding, onExecuteAction, onCancelAction }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
 
@@ -1444,36 +2098,14 @@ const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGround
   return (
     <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[88%] rounded-2xl transition-all ${
+        className={`max-w-[85%] rounded-2xl transition-all ${
           isUser
-            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-br-xs px-5 py-3.5 shadow-sm text-sm'
-            : 'bg-white border border-slate-200/90 text-slate-800 rounded-bl-xs px-6 py-5 shadow-xs'
+            ? 'bg-indigo-600 text-white rounded-br-xs px-4 py-2.5 text-xs sm:text-[13px] shadow-2xs leading-relaxed'
+            : 'bg-white border border-slate-200/90 text-slate-800 rounded-tl-xs px-5 py-3.5 shadow-2xs text-xs sm:text-[13px]'
         }`}
       >
-        {/* Assistant Header */}
-        {!isUser && (
-          <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-lg bg-indigo-50 border border-indigo-200/70 flex items-center justify-center text-indigo-600 shadow-2xs">
-                <Sparkles className="w-3 h-3 text-indigo-600" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 tracking-tight">
-                AI Knowledge Assistant
-              </span>
-            </div>
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 transition-colors px-1.5 py-0.5 rounded-md hover:bg-slate-100 cursor-pointer"
-              title="Cevabı kopyala"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
-            </button>
-          </div>
-        )}
-
-        {/* Content with rich markdown formatting */}
-        <div className={isUser ? 'text-[13.5px] leading-relaxed text-white' : 'text-slate-800'}>
+        {/* Content with clean typography */}
+        <div className={isUser ? 'leading-relaxed text-white' : 'text-slate-800'}>
           {isUser ? (
             <div className="whitespace-pre-wrap">{message.content}</div>
           ) : (
@@ -1481,43 +2113,42 @@ const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGround
               remarkPlugins={[remarkGfm]}
               components={{
                 p: ({ children }) => (
-                  <p className="mb-3.5 last:mb-0 text-[13.5px] leading-relaxed text-slate-700">
+                  <p className="mb-2.5 last:mb-0 leading-relaxed text-slate-700">
                     {children}
                   </p>
                 ),
                 ul: ({ children }) => (
-                  <ul className="my-3.5 space-y-2.5 pl-0 list-none">
+                  <ul className="my-2 space-y-1 pl-4 list-disc marker:text-indigo-500 leading-relaxed text-slate-700">
                     {children}
                   </ul>
                 ),
                 li: ({ children }) => (
-                  <li className="relative pl-5 text-[13.5px] leading-relaxed text-slate-700 before:content-[''] before:absolute before:left-1 before:top-[8px] before:w-2 before:h-2 before:rounded-full before:bg-indigo-500 before:ring-3 before:ring-indigo-100">
+                  <li className="leading-relaxed text-slate-700">
                     {children}
                   </li>
                 ),
                 ol: ({ children }) => (
-                  <ol className="my-3.5 space-y-2.5 pl-5 list-decimal text-[13.5px] leading-relaxed text-slate-700 marker:font-bold marker:text-indigo-600">
+                  <ol className="my-2 space-y-1 pl-4 list-decimal marker:font-bold marker:text-indigo-600 leading-relaxed text-slate-700">
                     {children}
                   </ol>
                 ),
                 strong: ({ children }) => (
-                  <strong className="font-bold text-slate-900 bg-slate-100/90 px-1.5 py-0.5 rounded text-[13px] border border-slate-200/60 inline-block my-0.5 shadow-2xs">
+                  <strong className="font-semibold text-slate-900">
                     {children}
                   </strong>
                 ),
                 h1: ({ children }) => (
-                  <h3 className="text-base font-bold text-slate-900 mt-4 mb-2 pb-1.5 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-900 mt-3 mb-1.5 pb-1 border-b border-slate-100">
                     {children}
                   </h3>
                 ),
                 h2: ({ children }) => (
-                  <h4 className="text-sm font-bold text-slate-900 mt-3.5 mb-2 pb-1 border-b border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-900 mt-2.5 mb-1">
                     {children}
                   </h4>
                 ),
                 h3: ({ children }) => (
-                  <h5 className="text-[13.5px] font-bold text-indigo-950 mt-3 mb-1.5 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  <h5 className="text-xs font-semibold text-indigo-950 mt-2 mb-1">
                     {children}
                   </h5>
                 ),
@@ -1539,7 +2170,7 @@ const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGround
                       />
                     );
                   }
-                  return <em className="italic text-slate-600">{children}</em>;
+                  return <em className="italic text-slate-500">{children}</em>;
                 },
                 a: ({ href, children }) => {
                   const str = String(href || children);
@@ -1558,7 +2189,7 @@ const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGround
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-600 hover:text-indigo-800 underline font-semibold inline-flex items-center gap-0.5"
+                      className="text-indigo-600 hover:text-indigo-800 underline font-medium inline-flex items-center gap-0.5"
                     >
                       <span>{children}</span>
                       <ExternalLink className="w-3 h-3 inline" />
@@ -1566,31 +2197,31 @@ const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGround
                   );
                 },
                 blockquote: ({ children }) => (
-                  <blockquote className="my-3 border-l-4 border-indigo-500 bg-indigo-50/40 rounded-r-xl px-4 py-2.5 text-[13px] text-slate-700 not-italic border-y border-r border-indigo-100/60 shadow-2xs">
+                  <blockquote className="my-2 border-l-2 border-indigo-400 bg-slate-50 px-3 py-1.5 rounded-r-lg text-xs text-slate-600 italic">
                     {children}
                   </blockquote>
                 ),
                 table: ({ children }) => (
-                  <div className="my-3 overflow-x-auto rounded-xl border border-slate-200 shadow-2xs">
+                  <div className="my-2 overflow-x-auto rounded-lg border border-slate-200 shadow-2xs">
                     <table className="w-full text-left text-xs border-collapse">{children}</table>
                   </div>
                 ),
                 thead: ({ children }) => (
-                  <thead className="bg-slate-100/80 text-slate-800 font-bold border-b border-slate-200">
+                  <thead className="bg-slate-50 text-slate-800 font-semibold border-b border-slate-200">
                     {children}
                   </thead>
                 ),
-                th: ({ children }) => <th className="p-2.5 font-bold text-slate-800">{children}</th>,
+                th: ({ children }) => <th className="p-2 font-semibold text-slate-800">{children}</th>,
                 td: ({ children }) => (
-                  <td className="p-2.5 border-t border-slate-100 text-slate-700">{children}</td>
+                  <td className="p-2 border-t border-slate-100 text-slate-700">{children}</td>
                 ),
                 code: ({ inline, children }) =>
                   inline ? (
-                    <code className="px-1.5 py-0.5 bg-slate-100 text-indigo-700 font-mono text-xs rounded border border-slate-200/80">
+                    <code className="px-1.5 py-0.5 bg-slate-100 text-indigo-700 font-mono text-[11px] rounded border border-slate-200/80">
                       {children}
                     </code>
                   ) : (
-                    <pre className="p-3 bg-slate-900 text-slate-100 rounded-xl text-xs font-mono overflow-x-auto my-2.5">
+                    <pre className="p-2.5 bg-slate-900 text-slate-100 rounded-xl text-xs font-mono overflow-x-auto my-2">
                       <code>{children}</code>
                     </pre>
                   ),
@@ -1601,6 +2232,16 @@ const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGround
           )}
         </div>
 
+        {/* Interactive Action Confirmation Card */}
+        {!isUser && message.action && (
+          <ActionConfirmationCard
+            action={message.action}
+            msgIndex={msgIndex}
+            onExecute={onExecuteAction}
+            onCancel={onCancelAction}
+          />
+        )}
+
         {!isUser && message.sources?.length > 0 && (
           <Sources
             sources={message.sources}
@@ -1608,6 +2249,24 @@ const MessageBubble = ({ message, onViewDocument, onGoToInspector, onTraceGround
             onGoToInspector={onGoToInspector}
             onTraceGrounding={onTraceGrounding}
           />
+        )}
+
+        {/* Minimal Footer for Assistant */}
+        {!isUser && (
+          <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1 text-[10px]">
+              <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
+              <span>Asistan</span>
+            </span>
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 text-slate-400 hover:text-slate-700 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-50 cursor-pointer"
+              title="Cevabı kopyala"
+            >
+              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+              <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -1619,113 +2278,53 @@ const Sources = ({ sources, onViewDocument, onGoToInspector, onTraceGrounding })
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="mt-3.5 border-t border-slate-100 pt-3">
+    <div className="mt-2.5 pt-2 border-t border-slate-100">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer select-none"
       >
-        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-        <BookOpen className="w-3.5 h-3.5" />
+        {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        <BookOpen className="w-3 h-3" />
         <span>
-          {sources.length} Grounded Source{sources.length > 1 ? 's' : ''}
+          Kaynak Belgeler ({sources.length})
         </span>
       </button>
 
       {expanded && (
-        <div className="mt-2.5 space-y-2">
+        <div className="mt-2 space-y-1.5">
           {sources.map((src, idx) => (
             <div
               key={idx}
-              className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 hover:border-indigo-200 transition-all"
+              className="bg-slate-50/70 rounded-lg p-2.5 border border-slate-200/60 hover:border-indigo-200 transition-all text-xs"
             >
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                  {/* Organization badge */}
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                   {src.org_name && (
                     <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0"
-                      style={{
-                        backgroundColor: `${src.org_color || '#6b7280'}15`,
-                        color: src.org_color || '#475569',
-                        border: `1px solid ${src.org_color || '#6b7280'}30`,
-                      }}
+                      className="text-[9px] font-semibold px-1.5 py-0.5 rounded text-slate-600 bg-slate-200/60 shrink-0"
                     >
-                      <Building2 className="w-2.5 h-2.5" />
                       {src.org_name}
                     </span>
                   )}
-                  {/* Clickable filename badge */}
                   <button
                     type="button"
                     onClick={() => onViewDocument && onViewDocument({ docName: src.source, page: src.page })}
-                    className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-900 rounded-md border border-indigo-200/60 truncate cursor-pointer transition-colors flex items-center gap-1 group/btn"
+                    className="text-[11px] font-medium text-indigo-600 hover:underline truncate cursor-pointer flex items-center gap-1"
                     title={`Tıkla: ${src.source} dokümanını aç`}
                   >
-                    <FileText className="w-3 h-3 text-indigo-500" />
-                    <span className="underline decoration-indigo-300 group-hover/btn:decoration-indigo-600 truncate max-w-[200px]">
-                      {src.source}
-                    </span>
-                    <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover/btn:opacity-100 shrink-0" />
+                    <FileText className="w-3 h-3 shrink-0" />
+                    <span className="truncate max-w-[200px]">{src.source}</span>
                   </button>
                   {src.page && (
-                    <span className="text-[10px] font-mono text-slate-500 shrink-0">p.{src.page}</span>
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Glowing Trace Flow Button */}
-                  {onTraceGrounding && (
-                    <button
-                      onClick={() =>
-                        onTraceGrounding({
-                          docName: src.source,
-                          snippet: src.preview,
-                          page: src.page,
-                        })
-                      }
-                      className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 rounded-lg transition-all font-bold shadow-xs hover:scale-105 active:scale-95 shadow-indigo-600/25 cursor-pointer"
-                      title="Animate line flow to exact chunk & highlight"
-                    >
-                      <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
-                      <span>Trace Flow ➔</span>
-                    </button>
-                  )}
-
-                  {onViewDocument && (
-                    <button
-                      onClick={() => onViewDocument({ docName: src.source, page: src.page })}
-                      className="flex items-center gap-1 px-2 py-1 text-[10px] text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-colors font-semibold border border-slate-200 shadow-2xs cursor-pointer"
-                      title={src.is_pdf ? 'View PDF' : 'View Document'}
-                    >
-                      <Eye className="w-3 h-3 text-slate-500" />
-                      View
-                    </button>
+                    <span className="text-[10px] font-mono text-slate-400 shrink-0">s.{src.page}</span>
                   )}
                 </div>
               </div>
-
-              {/* Tags */}
-              {src.tags?.length > 0 && (
-                <div className="flex gap-1 mb-1.5 flex-wrap">
-                  {src.tags.map((tag, i) => (
-                    <span
-                      key={i}
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-500 font-medium"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+              {src.snippet && (
+                <p className="text-[11px] text-slate-500 line-clamp-2 italic leading-relaxed">
+                  "{src.snippet}"
+                </p>
               )}
-
-              <p
-                onClick={() => onViewDocument && onViewDocument({ docName: src.source, page: src.page })}
-                className="text-[11px] text-slate-600 italic leading-relaxed bg-white p-2 rounded-lg border border-slate-200/60 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/20 transition-all"
-                title="Tıkla: Dokümanı aç"
-              >
-                "{src.preview?.substring(0, 160)}..."
-              </p>
             </div>
           ))}
         </div>
@@ -1735,3 +2334,4 @@ const Sources = ({ sources, onViewDocument, onGoToInspector, onTraceGrounding })
 };
 
 export default Upload;
+

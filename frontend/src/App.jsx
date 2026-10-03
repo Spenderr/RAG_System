@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
 import Upload from './components/Upload';
 import Documents from './components/Documents';
 import Inspector from './components/Inspector';
@@ -7,10 +8,16 @@ import Organizations from './components/Organizations';
 import Tour from './components/Tour';
 
 function App() {
-  const [activeView, setActiveView] = useState('upload');
+  const [activeView, setActiveView] = useState('dashboard');
   const [showTour, setShowTour] = useState(false);
   const [inspectorDocName, setInspectorDocName] = useState(null);
   const [inspectorTraceInfo, setInspectorTraceInfo] = useState(null);
+
+  // Cross-view state for direct deep linking
+  const [selectedOrgId, setSelectedOrgId] = useState(null);
+  const [openNoteOnMount, setOpenNoteOnMount] = useState(false);
+  const [chatPrompt, setChatPrompt] = useState('');
+  const [uploadMode, setUploadMode] = useState('files');
 
   // Document reader modal state (shared across views)
   const [readerDoc, setReaderDoc] = useState(null);
@@ -31,6 +38,21 @@ function App() {
   const handleViewChange = (view) => {
     if (view === activeView) return;
     setActiveView(view);
+  };
+
+  const handleSelectOrgFromDashboard = (orgId) => {
+    setSelectedOrgId(orgId);
+    setActiveView('organizations');
+  };
+
+  const handleAskAiFromDashboard = (prompt) => {
+    setChatPrompt(prompt);
+    setActiveView('upload');
+  };
+
+  const handleOpenNoteModalFromDashboard = () => {
+    setUploadMode('text');
+    setActiveView('upload');
   };
 
   const handleGoToInspectorForDoc = (docName) => {
@@ -70,17 +92,36 @@ function App() {
         onShowTour={() => setShowTour(true)}
       />
       <main className="flex-1 overflow-hidden bg-slate-50 relative">
+        <div className={`w-full h-full ${activeView === 'dashboard' ? 'block page-transition' : 'hidden'}`}>
+          <Dashboard
+            onNavigate={handleViewChange}
+            onSelectOrg={handleSelectOrgFromDashboard}
+            onAskAi={handleAskAiFromDashboard}
+            onOpenNoteModal={handleOpenNoteModalFromDashboard}
+            onViewDocument={handleViewDocument}
+          />
+        </div>
         <div className={`w-full h-full ${activeView === 'upload' ? 'block page-transition' : 'hidden'}`}>
           <Upload
             onViewDocument={handleViewDocument}
             onGoToInspector={handleGoToInspectorForDoc}
             onTraceGrounding={handleTraceGrounding}
+            initialChatPrompt={chatPrompt}
+            onClearInitialPrompt={() => setChatPrompt('')}
+            initialMode={uploadMode}
+            onNavigateToOrgs={(orgId) => {
+              if (orgId && orgId !== '__unassigned__') setSelectedOrgId(orgId);
+              setActiveView('organizations');
+            }}
           />
         </div>
         <div className={`w-full h-full ${activeView === 'organizations' ? 'block page-transition' : 'hidden'}`}>
           <Organizations
             onViewDocument={handleViewDocument}
             onGoToInspector={handleGoToInspectorForDoc}
+            initialOrgId={selectedOrgId}
+            openNoteOnMount={openNoteOnMount}
+            onClearInitialOrgId={() => setSelectedOrgId(null)}
           />
         </div>
         <div className={`w-full h-full ${activeView === 'documents' ? 'block page-transition' : 'hidden'}`}>

@@ -34,3 +34,27 @@ __pycache__/
 # Exported large JSON outputs
 chunks_export.json
 rag_results.json
+
+# ── User uploaded files (personal docs, images, PDFs) ──────────────
+uploads/
+
+# ── Frontend build artifacts ────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+
+# ── Legacy root-level scripts (prototype files, not part of app) ────
+answer_generation.py
+conversational_rag.py
+hybrid_search.ipynb
+ingestion_pipeline.py
+main.py
+multi_modal_rag.ipynb
+multi_query_retrieval.py
+reciprocal_rank_fusion.py
+retrieval_methods.py
+retrieval_pipeline.py
+reranker.ipynb
+
+# ── Logs ─────────────────────────────────────────────────────────────
+*.log
+logs/
