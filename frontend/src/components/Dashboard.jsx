@@ -4,7 +4,7 @@ import {
   ArrowRight, Search, Clock, Zap, Check, MessageSquare, ArrowUpRight,
   TrendingUp, Layers, ExternalLink, Image as ImageIcon, Send, Database,
   FolderOpen, ChevronRight, CheckCircle2, ShieldCheck, Cpu, PieChart,
-  BarChart3, Info, FileCode, HelpCircle
+  BarChart3, Info, FileCode, HelpCircle, Trees, Home, Hammer, Award
 } from 'lucide-react';
 
 const Dashboard = ({
@@ -19,7 +19,10 @@ const Dashboard = ({
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchPrompt, setSearchPrompt] = useState('');
-  const [hoveredType, setHoveredType] = useState(null);
+  
+  // Chart category mode: 'domain' (Arsa, Kat Karşılığı, Kiralık, vb.) vs 'format' (PDF, Görsel, Not)
+  const [chartMode, setChartMode] = useState('domain');
+  const [hoveredSegment, setHoveredSegment] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,8 +71,132 @@ const Dashboard = ({
     return set.size;
   }, [organizations]);
 
-  // Document Type Breakdown & Distribution Calculations
-  const typeBreakdown = useMemo(() => {
+  // ── 1. DOMAIN & REAL ESTATE CATEGORY BREAKDOWN ────────────────────────────
+  // Classifies documents into business categories: Arsa, Kat Karşılığı, Kiralık/Satılık, vb.
+  const domainBreakdown = useMemo(() => {
+    let arsa = 0;
+    let katKarsiligi = 0;
+    let kiralikSatilik = 0;
+    let ticariSozlesme = 0;
+    let sertifikalar = 0;
+    let musteriNotlari = 0;
+    let diger = 0;
+
+    documents.forEach(d => {
+      const name = (d.name || '').toLowerCase();
+      const folder = (d.folder || '').toLowerCase();
+      const tags = (d.tags || []).map(t => String(t).toLowerCase());
+      const allText = `${name} ${folder} ${tags.join(' ')}`;
+
+      // 1. Kat Karşılığı
+      if (allText.includes('kat_karsiligi') || allText.includes('kat karşılığı') || allText.includes('müteahhit') || allText.includes('insaat') || allText.includes('inşaat')) {
+        katKarsiligi++;
+      }
+      // 2. Arsa & Arazi (Silivri, Dikili, Tapu, vb.)
+      else if (allText.includes('arsa') || allText.includes('dikili') || allText.includes('silivri') || allText.includes('tapu') || allText.includes('parsel') || allText.includes('tarla') || allText.includes('arazi')) {
+        arsa++;
+      }
+      // 3. Kiralık & Satılık Konut / Ticari
+      else if (allText.includes('kiralık') || allText.includes('kiralik') || allText.includes('satılık') || allText.includes('satilik') || allText.includes('daire') || allText.includes('konut') || allText.includes('villa') || allText.includes('dükkan') || allText.includes('dukkan')) {
+        kiralikSatilik++;
+      }
+      // 4. Müşteri Notları & Teklifler
+      else if (d.doc_type === 'whatsapp' || tags.includes('whatsapp') || allText.includes('teklif') || allText.includes('pazarlık') || allText.includes('görüşme') || allText.includes('not') || name.startsWith('wa_')) {
+        musteriNotlari++;
+      }
+      // 5. Sertifikalar & Yetki Belgeleri
+      else if (tags.includes('sertifika') || allText.includes('sertifika') || allText.includes('certificate') || allText.includes('yetki') || allText.includes('hackerrank') || allText.includes('freecodecamp')) {
+        sertifikalar++;
+      }
+      // 6. Ticari Sözleşmeler & Prosedürler
+      else if (allText.includes('procedure') || allText.includes('draft') || allText.includes('sozlesme') || allText.includes('sözleşme') || allText.includes('minerals') || allText.includes('commercial')) {
+        ticariSozlesme++;
+      }
+      else {
+        diger++;
+      }
+    });
+
+    const total = documents.length || 1;
+    const items = [
+      {
+        key: 'arsa',
+        label: 'Arsa & Arazi Portföyü',
+        desc: 'Tapu kayıtları, ada/parsel ve imar durumu',
+        count: arsa,
+        color: '#f97316', // Orange
+        lightBg: 'bg-orange-50',
+        textColor: 'text-orange-700',
+        percent: Math.round((arsa / total) * 100),
+      },
+      {
+        key: 'katKarsiligi',
+        label: 'Kat Karşılığı & Projeler',
+        desc: 'İnşaat sözleşmeleri ve paylaşım şartları',
+        count: katKarsiligi,
+        color: '#8b5cf6', // Violet
+        lightBg: 'bg-violet-50',
+        textColor: 'text-violet-700',
+        percent: Math.round((katKarsiligi / total) * 100),
+      },
+      {
+        key: 'kiralikSatilik',
+        label: 'Satılık & Kiralık Portföy',
+        desc: 'Daire, dükkan ve konut ilan/kayıtları',
+        count: kiralikSatilik,
+        color: '#06b6d4', // Cyan
+        lightBg: 'bg-cyan-50',
+        textColor: 'text-cyan-700',
+        percent: Math.round((kiralikSatilik / total) * 100),
+      },
+      {
+        key: 'musteriNotlari',
+        label: 'Müşteri Notları & Teklifler',
+        desc: 'WhatsApp pazarlıkları ve görüşme özetleri',
+        count: musteriNotlari,
+        color: '#ec4899', // Pink
+        lightBg: 'bg-pink-50',
+        textColor: 'text-pink-700',
+        percent: Math.round((musteriNotlari / total) * 100),
+      },
+      {
+        key: 'sertifikalar',
+        label: 'Sertifikalar & Yetki Evrakı',
+        desc: 'Mesleki ve teknik sertifika dökümleri',
+        count: sertifikalar,
+        color: '#10b981', // Emerald
+        lightBg: 'bg-emerald-50',
+        textColor: 'text-emerald-700',
+        percent: Math.round((sertifikalar / total) * 100),
+      },
+      {
+        key: 'ticariSozlesme',
+        label: 'Ticari Sözleşmeler & Prosedür',
+        desc: 'Şirket ve tedarik akreditif evrakları',
+        count: ticariSozlesme,
+        color: '#3b82f6', // Blue
+        lightBg: 'bg-blue-50',
+        textColor: 'text-blue-700',
+        percent: Math.round((ticariSozlesme / total) * 100),
+      },
+      {
+        key: 'diger',
+        label: 'Genel Belgeler & Diğer',
+        desc: 'Kategorize edilmemiş genel evraklar',
+        count: diger,
+        color: '#64748b', // Slate
+        lightBg: 'bg-slate-50',
+        textColor: 'text-slate-700',
+        percent: Math.round((diger / total) * 100),
+      },
+    ].filter(i => i.count > 0);
+
+    const dominant = [...items].sort((a, b) => b.count - a.count)[0] || null;
+    return { items, dominant, total: documents.length };
+  }, [documents]);
+
+  // ── 2. TECHNICAL FORMAT BREAKDOWN ─────────────────────────────────────────
+  const formatBreakdown = useMemo(() => {
     let images = 0;
     let pdfs = 0;
     let whatsapp = 0;
@@ -94,11 +221,9 @@ const Dashboard = ({
         label: 'Görsel & Tapu / OCR',
         desc: 'Taranmış tapu, fotoğraf ve planlar',
         count: images,
-        color: '#f59e0b', // Amber
-        bgColor: 'bg-amber-500',
+        color: '#f59e0b',
         lightBg: 'bg-amber-50',
         textColor: 'text-amber-700',
-        borderColor: 'border-amber-200',
         percent: Math.round((images / total) * 100),
       },
       {
@@ -106,11 +231,9 @@ const Dashboard = ({
         label: 'PDF & Sözleşmeler',
         desc: 'Resmi prosedürler ve şartnameler',
         count: pdfs,
-        color: '#ef4444', // Red/Rose
-        bgColor: 'bg-red-500',
+        color: '#ef4444',
         lightBg: 'bg-red-50',
         textColor: 'text-red-700',
-        borderColor: 'border-red-200',
         percent: Math.round((pdfs / total) * 100),
       },
       {
@@ -118,33 +241,31 @@ const Dashboard = ({
         label: 'WhatsApp & Notlar',
         desc: 'Mobil görüşmeler ve müşteri notları',
         count: whatsapp,
-        color: '#10b981', // Emerald
-        bgColor: 'bg-emerald-500',
+        color: '#10b981',
         lightBg: 'bg-emerald-50',
         textColor: 'text-emerald-700',
-        borderColor: 'border-emerald-200',
         percent: Math.round((whatsapp / total) * 100),
       },
       {
         key: 'textDocs',
         label: 'Metin & Diğer Belgeler',
-        desc: 'TXT, veri dökümleri ve sertifikalar',
+        desc: 'TXT ve döküman dosyaları',
         count: textDocs,
-        color: '#6366f1', // Indigo
-        bgColor: 'bg-indigo-500',
+        color: '#6366f1',
         lightBg: 'bg-indigo-50',
         textColor: 'text-indigo-700',
-        borderColor: 'border-indigo-200',
         percent: Math.round((textDocs / total) * 100),
       },
     ].filter(i => i.count > 0);
 
     const dominant = [...items].sort((a, b) => b.count - a.count)[0] || null;
-
     return { items, dominant, total: documents.length };
   }, [documents]);
 
-  // Organization Share & Distribution Calculations
+  // Active breakdown depending on user selection
+  const activeBreakdown = chartMode === 'domain' ? domainBreakdown : formatBreakdown;
+
+  // ── 3. ORGANIZATION SHARE BREAKDOWN ───────────────────────────────────────
   const orgBreakdown = useMemo(() => {
     const total = documents.length || 1;
     return organizations.map(org => {
@@ -195,13 +316,13 @@ const Dashboard = ({
     },
   ];
 
-  // Donut SVG geometry math: radius 52, circumference = 2 * PI * 52 = 326.72
+  // SVG Donut geometry calculations
   const donutRadius = 52;
   const circumference = 2 * Math.PI * donutRadius;
 
   let cumulativeOffset = 0;
-  const donutSegments = typeBreakdown.items.map((item) => {
-    const fraction = typeBreakdown.total > 0 ? item.count / typeBreakdown.total : 0;
+  const donutSegments = activeBreakdown.items.map((item) => {
+    const fraction = activeBreakdown.total > 0 ? item.count / activeBreakdown.total : 0;
     const dashLength = fraction * circumference;
     const strokeDasharray = `${dashLength} ${circumference - dashLength}`;
     const strokeDashoffset = -cumulativeOffset;
@@ -229,13 +350,13 @@ const Dashboard = ({
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-2.5 backdrop-blur-sm">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>Depo Yöneticisi · Akıllı Portföy & Bilgi Deposu</span>
+                  <span>Depo Yöneticisi · Akıllı Emlak & Portföy Arşivi</span>
                 </div>
                 <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
                   Depo Kontrol Merkezi 🏛️
                 </h1>
                 <p className="text-xs lg:text-sm text-slate-300 mt-1 max-w-xl">
-                  Müşteri portföyleriniz, tapu belgeleriniz, sözleşmeleriniz ve WhatsApp notlarınız depolandı, analiz edildi ve sorgulanmaya hazır.
+                  Arsa, kat karşılığı, ticari sözleşmeler ve WhatsApp notlarınız depolandı, analiz edildi ve sorgulanmaya hazır.
                 </p>
               </div>
 
@@ -272,7 +393,7 @@ const Dashboard = ({
                 <input
                   value={searchPrompt}
                   onChange={(e) => setSearchPrompt(e.target.value)}
-                  placeholder="Depo Yöneticisine sorun... (Örn: Nuran Hanım'ın arsa portföyündeki şartlar ve son notlar neler?)"
+                  placeholder="Depo Yöneticisine sorun... (Örn: Silivri arsa kat karşılığı şartları ve son müşteri teklifi nedir?)"
                   className="w-full bg-white/10 hover:bg-white/[0.14] focus:bg-white/15 border border-white/20 focus:border-indigo-400 rounded-2xl py-3.5 pl-12 pr-28 text-xs lg:text-sm text-white placeholder:text-slate-400 focus:outline-none transition-all shadow-inner backdrop-blur-md"
                 />
                 <button
@@ -378,37 +499,67 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            3. CLEAN & IMPACTFUL CHARTS (DEPO ANALİTİĞİ & DAĞILIM)
+            3. CLEAN & IMPACTFUL CHARTS (ARSA, KAT KARŞILIĞI & PORTFÖYLER)
         ───────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           
-          {/* Chart 1: Minimalist Donut Chart - Document Type Breakdown */}
-          <div className="lg:col-span-6 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          {/* Chart 1: Minimalist Donut Chart - Real Estate & Domain Categories */}
+          <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-2">
+              {/* Header with Segmented Category Switch */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
                     <PieChart className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">Belge Türü & Cins Dağılımı</h2>
-                    <p className="text-[11px] text-slate-400">Depoda saklanan evrakların format ve içerik türleri</p>
+                    <h2 className="text-sm font-bold text-slate-900">Portföy & Gayrimenkul Dağılımı</h2>
+                    <p className="text-[11px] text-slate-400">Arsa, kat karşılığı, ticari evrak ve not segmentasyonu</p>
                   </div>
                 </div>
 
-                {typeBreakdown.dominant && (
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs">
-                    🏆 En Çok: {typeBreakdown.dominant.label} (%{typeBreakdown.dominant.percent})
-                  </span>
-                )}
+                {/* View Switcher: Domain vs Format */}
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/70 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => { setChartMode('domain'); setHoveredSegment(null); }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      chartMode === 'domain'
+                        ? 'bg-white text-indigo-700 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    🏡 Gayrimenkul Cinsi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setChartMode('format'); setHoveredSegment(null); }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      chartMode === 'format'
+                        ? 'bg-white text-indigo-700 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    📄 Belge Formatı
+                  </button>
+                </div>
               </div>
 
+              {/* Dominant Highlight Badge */}
+              {activeBreakdown.dominant && (
+                <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-orange-800 text-xs font-bold shadow-2xs">
+                  <span>🏆 En Baskın Kategori:</span>
+                  <span className="font-extrabold">{activeBreakdown.dominant.label}</span>
+                  <span className="text-orange-600 font-mono font-black">(%{activeBreakdown.dominant.percent})</span>
+                </div>
+              )}
+
               {/* Chart Visual & Legend Container */}
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-12 items-center gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-6">
                 
                 {/* SVG Donut Circle */}
                 <div className="sm:col-span-5 flex flex-col items-center justify-center relative">
-                  <div className="relative w-40 h-40 flex items-center justify-center">
+                  <div className="relative w-44 h-44 flex items-center justify-center">
                     <svg viewBox="0 0 140 140" className="w-full h-full transform -rotate-90">
                       {/* Background track circle */}
                       <circle
@@ -421,7 +572,7 @@ const Dashboard = ({
                       />
                       {/* Colored Donut Segments */}
                       {donutSegments.map((seg) => {
-                        const isHovered = hoveredType === seg.key;
+                        const isHovered = hoveredSegment === seg.key;
                         return (
                           <circle
                             key={seg.key}
@@ -430,43 +581,43 @@ const Dashboard = ({
                             r={donutRadius}
                             fill="transparent"
                             stroke={seg.color}
-                            strokeWidth={isHovered ? "19" : "15"}
+                            strokeWidth={isHovered ? "20" : "15"}
                             strokeDasharray={seg.strokeDasharray}
                             strokeDashoffset={seg.strokeDashoffset}
                             strokeLinecap="round"
                             className="transition-all duration-300 cursor-pointer"
-                            onMouseEnter={() => setHoveredType(seg.key)}
-                            onMouseLeave={() => setHoveredType(null)}
+                            onMouseEnter={() => setHoveredSegment(seg.key)}
+                            onMouseLeave={() => setHoveredSegment(null)}
                           />
                         );
                       })}
                     </svg>
 
                     {/* Donut Center Count & Label */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
                       <span className="text-2xl font-black text-slate-900 tracking-tight">
-                        {hoveredType
-                          ? typeBreakdown.items.find(i => i.key === hoveredType)?.count
-                          : typeBreakdown.total}
+                        {hoveredSegment
+                          ? activeBreakdown.items.find(i => i.key === hoveredSegment)?.count
+                          : activeBreakdown.total}
                       </span>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                        {hoveredType
-                          ? typeBreakdown.items.find(i => i.key === hoveredType)?.label.split(' ')[0]
-                          : 'Belge'}
+                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider truncate max-w-[90px]">
+                        {hoveredSegment
+                          ? activeBreakdown.items.find(i => i.key === hoveredSegment)?.label.split(' ')[0]
+                          : 'Toplam Belge'}
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Clean Type Legend with Hover Highlighting */}
-                <div className="sm:col-span-7 space-y-2.5">
-                  {typeBreakdown.items.map((item) => {
-                    const isHovered = hoveredType === item.key;
+                <div className="sm:col-span-7 space-y-2">
+                  {activeBreakdown.items.map((item) => {
+                    const isHovered = hoveredSegment === item.key;
                     return (
                       <div
                         key={item.key}
-                        onMouseEnter={() => setHoveredType(item.key)}
-                        onMouseLeave={() => setHoveredType(null)}
+                        onMouseEnter={() => setHoveredSegment(item.key)}
+                        onMouseLeave={() => setHoveredSegment(null)}
                         className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                           isHovered
                             ? 'bg-slate-50 border-indigo-300 ring-2 ring-indigo-500/10 shadow-xs'
@@ -503,20 +654,20 @@ const Dashboard = ({
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Tüm belgeler OCR & Vektör indeksli</span>
+                <span>Arsa, kat karşılığı ve tüm tapular AI hafızasında</span>
               </span>
               <button
                 onClick={() => onNavigate?.('documents')}
                 className="font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>Dokümanları İncele</span>
+                <span>Dokümanları Listele</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
           </div>
 
           {/* Chart 2: Portfolios / Organizations Share (Horizontal Bars) */}
-          <div className="lg:col-span-6 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -524,8 +675,8 @@ const Dashboard = ({
                     <BarChart3 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">Portföy Bilgi & Belge Hacmi</h2>
-                    <p className="text-[11px] text-slate-400">Hangi portföyde ne kadar arşiv ve evrak yükü var</p>
+                    <h2 className="text-sm font-bold text-slate-900">Portföy Hacim Dağılımı</h2>
+                    <p className="text-[11px] text-slate-400">Müşteri portföylerindeki belge yoğunluğu</p>
                   </div>
                 </div>
 
@@ -539,7 +690,7 @@ const Dashboard = ({
               </div>
 
               {/* Horizontal Bar Chart List */}
-              <div className="mt-4 space-y-3.5">
+              <div className="mt-4 space-y-3">
                 {orgBreakdown.map((org) => (
                   <div
                     key={org.id}
