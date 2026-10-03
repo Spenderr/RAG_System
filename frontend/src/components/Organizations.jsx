@@ -1561,13 +1561,13 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 }`}
               >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                  <Folder className="w-4 h-4 text-slate-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-500 truncate">
-                    {dragOverOrgId === unassignedOrg.id ? 'Atanmamışa Taşı' : 'Atanmamış'}
+                  <p className="text-xs font-semibold text-slate-600 truncate">
+                    {dragOverOrgId === unassignedOrg.id ? 'Genel / Klasörsüzlere Taşı' : (unassignedOrg.name || 'Genel / Klasörsüzler')}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">{unassignedOrg.document_count} dok.</p>
+                  <p className="text-[10px] text-slate-400 font-mono">{unassignedOrg.document_count} doküman</p>
                 </div>
               </button>
             </div>
@@ -2058,7 +2058,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           <div className="relative bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 w-[360px] max-w-[94vw]">
             <h3 className="text-sm font-bold text-slate-900 mb-2">Kurumu Sil</h3>
             <p className="text-xs text-slate-500 mb-5">
-              Bu kurumu silmek istediğinize emin misiniz? Dosyalar silinmez, "Atanmamış" grubuna taşınır.
+              Bu kurumu silmek istediğinize emin misiniz? Dosyalar silinmez, "Genel / Klasörsüzler" grubuna taşınır.
             </p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800">İptal</button>

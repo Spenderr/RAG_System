@@ -27,11 +27,6 @@ class CreateNoteRequest(BaseModel):
     doc_type: Optional[str] = "whatsapp"
 
 
-class UpdateDocContentRequest(BaseModel):
-    content: str
-
-
-
 class BatchAnalyzeRequest(BaseModel):
     filenames: List[str]
 

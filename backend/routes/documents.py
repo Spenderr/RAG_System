@@ -24,7 +24,6 @@ from models.documents import (
     MoveFolderRequest,
     RenameDocRequest,
     CreateNoteRequest,
-    UpdateDocContentRequest,
     BatchAnalyzeRequest,
     BatchCommitRequest,
     BatchDeleteRequest,
@@ -335,70 +334,6 @@ async def get_document_content(filename: str):
         "pages": pages_list,
         "total_pages": len(pages_list),
         "file_type": ext
-    }
-
-
-@router.put("/api/documents/{filename}/content")
-async def update_document_content(filename: str, req: UpdateDocContentRequest):
-    """Update text/note content, re-chunk, and re-embed into Chroma vector store."""
-    if filename not in processed_documents:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    file_path = UPLOAD_DIR / filename
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-
-    if ext not in ["txt", "md", "json", "note"]:
-        raise HTTPException(status_code=400, detail="Sadece metin (.txt) ve not belgeleri doğrudan düzenlenebilir.")
-
-    # 1. Update file on disk
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(req.content)
-
-    # 2. Re-chunk text
-    pages_data = [(1, req.content)]
-    chunks, chunk_details = chunk_by_sections_or_paragraphs(pages_data)
-
-    # 3. Delete old vectors in Chroma
-    try:
-        data = vector_store.get()
-        ids_to_delete = [
-            doc_id for doc_id, meta in zip(data.get("ids", []), data.get("metadatas", []))
-            if meta.get("source") == filename
-        ]
-        if ids_to_delete:
-            vector_store.delete(ids=ids_to_delete)
-    except Exception as e:
-        print(f"[update_content] Vector deletion warning: {e}")
-
-    # 4. Insert new vector chunks
-    all_metadatas = [
-        {
-            "source": filename,
-            "chunk_index": d["index"],
-            "total_chunks": len(chunks),
-            "page": 1,
-            "title": d.get("title", filename)
-        }
-        for d in chunk_details
-    ]
-    vector_store.add_texts(texts=chunks, metadatas=all_metadatas)
-
-    # 5. Update in-memory processed_documents
-    processed_documents[filename] = {
-        "text": req.content,
-        "chunks": chunks,
-        "chunk_details": chunk_details,
-        "char_count": len(req.content),
-        "chunk_count": len(chunks),
-        "file_type": ext,
-    }
-
-    return {
-        "status": "success",
-        "filename": filename,
-        "char_count": len(req.content),
-        "chunk_count": len(chunks),
-        "message": "Doküman içeriği başarıyla güncellendi ve Depo Yöneticisi hafızasında yeniden indekslendi."
     }
 
 

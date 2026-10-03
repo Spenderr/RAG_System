@@ -1246,7 +1246,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     disabled={noteSaving}
                   >
                     <option value="">-- Kurum Seçin (veya AI otomatik eşlesin) --</option>
-                    <option value="__unassigned__">Atanmamış (Genel Havuz)</option>
+                    <option value="__unassigned__">📁 Genel / Klasörsüzler</option>
                     {orgs.map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.name}
@@ -1696,8 +1696,8 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                       >
                         <div className="w-3.5 h-3.5 rounded-full bg-slate-400 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs truncate font-medium">Genel / Atanmamış</div>
-                          <div className="text-[10px] text-slate-400">Kurumsuz arşiv</div>
+                          <div className="text-xs truncate font-medium">Genel / Klasörsüzler</div>
+                          <div className="text-[10px] text-slate-400">Kurumsuz genel arşiv</div>
                         </div>
                         {assignOrgId === '__unassigned__' && (
                           <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
