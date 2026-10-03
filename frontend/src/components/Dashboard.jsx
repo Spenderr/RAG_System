@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   LayoutDashboard, Building2, Folder, FileText, Sparkles, Plus,
   ArrowRight, Search, Clock, Zap, Check, MessageSquare, ArrowUpRight,
   TrendingUp, Layers, ExternalLink, Image as ImageIcon, Send, Database,
-  FolderOpen, ChevronRight, CheckCircle2, ShieldCheck, Cpu
+  FolderOpen, ChevronRight, CheckCircle2, ShieldCheck, Cpu, PieChart,
+  BarChart3, Info, FileCode, HelpCircle
 } from 'lucide-react';
 
 const Dashboard = ({
@@ -18,6 +19,7 @@ const Dashboard = ({
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchPrompt, setSearchPrompt] = useState('');
+  const [hoveredType, setHoveredType] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,7 +60,7 @@ const Dashboard = ({
   }, []);
 
   // Compute total folders across all orgs
-  const totalFoldersCount = React.useMemo(() => {
+  const totalFoldersCount = useMemo(() => {
     const set = new Set();
     organizations.forEach(o => {
       (o.folders || []).forEach(f => set.add(`${o.id}_${f}`));
@@ -66,20 +68,99 @@ const Dashboard = ({
     return set.size;
   }, [organizations]);
 
-  // Total WhatsApp notes count
-  const whatsappCount = React.useMemo(() => {
-    return documents.filter(d => d.doc_type === 'whatsapp' || d.tags?.includes('whatsapp') || d.name?.toLowerCase().includes('whatsapp')).length;
+  // Document Type Breakdown & Distribution Calculations
+  const typeBreakdown = useMemo(() => {
+    let images = 0;
+    let pdfs = 0;
+    let whatsapp = 0;
+    let textDocs = 0;
+
+    documents.forEach(d => {
+      const name = d.name?.toLowerCase() || '';
+      const isWa = d.doc_type === 'whatsapp' || d.tags?.includes('whatsapp') || name.includes('whatsapp') || name.startsWith('wa_');
+      const isImg = /\.(png|jpg|jpeg|webp|bmp|gif)$/i.test(name);
+      const isPdf = name.endsWith('.pdf');
+
+      if (isWa) whatsapp++;
+      else if (isImg) images++;
+      else if (isPdf) pdfs++;
+      else textDocs++;
+    });
+
+    const total = documents.length || 1;
+    const items = [
+      {
+        key: 'images',
+        label: 'Görsel & Tapu / OCR',
+        desc: 'Taranmış tapu, fotoğraf ve planlar',
+        count: images,
+        color: '#f59e0b', // Amber
+        bgColor: 'bg-amber-500',
+        lightBg: 'bg-amber-50',
+        textColor: 'text-amber-700',
+        borderColor: 'border-amber-200',
+        percent: Math.round((images / total) * 100),
+      },
+      {
+        key: 'pdfs',
+        label: 'PDF & Sözleşmeler',
+        desc: 'Resmi prosedürler ve şartnameler',
+        count: pdfs,
+        color: '#ef4444', // Red/Rose
+        bgColor: 'bg-red-500',
+        lightBg: 'bg-red-50',
+        textColor: 'text-red-700',
+        borderColor: 'border-red-200',
+        percent: Math.round((pdfs / total) * 100),
+      },
+      {
+        key: 'whatsapp',
+        label: 'WhatsApp & Notlar',
+        desc: 'Mobil görüşmeler ve müşteri notları',
+        count: whatsapp,
+        color: '#10b981', // Emerald
+        bgColor: 'bg-emerald-500',
+        lightBg: 'bg-emerald-50',
+        textColor: 'text-emerald-700',
+        borderColor: 'border-emerald-200',
+        percent: Math.round((whatsapp / total) * 100),
+      },
+      {
+        key: 'textDocs',
+        label: 'Metin & Diğer Belgeler',
+        desc: 'TXT, veri dökümleri ve sertifikalar',
+        count: textDocs,
+        color: '#6366f1', // Indigo
+        bgColor: 'bg-indigo-500',
+        lightBg: 'bg-indigo-50',
+        textColor: 'text-indigo-700',
+        borderColor: 'border-indigo-200',
+        percent: Math.round((textDocs / total) * 100),
+      },
+    ].filter(i => i.count > 0);
+
+    const dominant = [...items].sort((a, b) => b.count - a.count)[0] || null;
+
+    return { items, dominant, total: documents.length };
   }, [documents]);
 
-  // Image / OCR count
-  const imageCount = React.useMemo(() => {
-    return documents.filter(d => /\.(png|jpg|jpeg|webp|bmp|gif)$/i.test(d.name)).length;
-  }, [documents]);
-
-  // PDF count
-  const pdfCount = React.useMemo(() => {
-    return documents.filter(d => d.name?.toLowerCase().endsWith('.pdf')).length;
-  }, [documents]);
+  // Organization Share & Distribution Calculations
+  const orgBreakdown = useMemo(() => {
+    const total = documents.length || 1;
+    return organizations.map(org => {
+      const count = org.document_count || 0;
+      const isUnassigned = org.id === '__unassigned__';
+      return {
+        id: org.id,
+        name: org.name || (isUnassigned ? 'Genel / Klasörsüzler' : 'İsimsiz Portföy'),
+        color: org.color || (isUnassigned ? '#64748b' : '#6366f1'),
+        count: count,
+        percent: Math.round((count / total) * 100),
+        foldersCount: (org.folders || []).length,
+        isSystem: org.is_system || isUnassigned,
+      };
+    }).sort((a, b) => b.count - a.count);
+  }, [organizations, documents]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -87,7 +168,6 @@ const Dashboard = ({
     onAskAi?.(searchPrompt.trim());
   };
 
-  // Curated AI suggested prompts based on actual database documents
   const samplePrompts = [
     {
       title: 'Silivri Arsa & Kat Karşılığı',
@@ -115,6 +195,24 @@ const Dashboard = ({
     },
   ];
 
+  // Donut SVG geometry math: radius 52, circumference = 2 * PI * 52 = 326.72
+  const donutRadius = 52;
+  const circumference = 2 * Math.PI * donutRadius;
+
+  let cumulativeOffset = 0;
+  const donutSegments = typeBreakdown.items.map((item) => {
+    const fraction = typeBreakdown.total > 0 ? item.count / typeBreakdown.total : 0;
+    const dashLength = fraction * circumference;
+    const strokeDasharray = `${dashLength} ${circumference - dashLength}`;
+    const strokeDashoffset = -cumulativeOffset;
+    cumulativeOffset += dashLength;
+    return {
+      ...item,
+      strokeDasharray,
+      strokeDashoffset,
+    };
+  });
+
   return (
     <div className="h-full overflow-y-auto bg-slate-50 custom-scrollbar p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-7">
@@ -123,7 +221,6 @@ const Dashboard = ({
             1. HERO / COMMAND CENTER HEADER
         ───────────────────────────────────────────────────────────── */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-7 lg:p-9 shadow-xl border border-slate-800">
-          {/* Subtle decorative glow */}
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -132,13 +229,13 @@ const Dashboard = ({
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-2.5 backdrop-blur-sm">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>Yapay Zeka Destekli Belge & Portföy Hafızası</span>
+                  <span>Depo Yöneticisi · Akıllı Portföy & Bilgi Deposu</span>
                 </div>
                 <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-                  Hoş Geldiniz 👋
+                  Depo Kontrol Merkezi 🏛️
                 </h1>
                 <p className="text-xs lg:text-sm text-slate-300 mt-1 max-w-xl">
-                  Tüm müşteri portföyleriniz, tapu belgeleriniz, sözleşmeleriniz ve WhatsApp notlarınız indekslendi ve sorgulamaya hazır.
+                  Müşteri portföyleriniz, tapu belgeleriniz, sözleşmeleriniz ve WhatsApp notlarınız depolandı, analiz edildi ve sorgulanmaya hazır.
                 </p>
               </div>
 
@@ -163,7 +260,7 @@ const Dashboard = ({
                   className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-sm border border-white/15 transition-all cursor-pointer"
                 >
                   <Building2 className="w-4 h-4" />
-                  <span>Gezgin</span>
+                  <span>Portföy Gezgini</span>
                 </button>
               </div>
             </div>
@@ -175,7 +272,7 @@ const Dashboard = ({
                 <input
                   value={searchPrompt}
                   onChange={(e) => setSearchPrompt(e.target.value)}
-                  placeholder="Yapay zekaya belgeleriniz hakkında herhangi bir şey sorun... (Örn: Nuran Hanım'ın arsa portföyündeki şartlar neler?)"
+                  placeholder="Depo Yöneticisine sorun... (Örn: Nuran Hanım'ın arsa portföyündeki şartlar ve son notlar neler?)"
                   className="w-full bg-white/10 hover:bg-white/[0.14] focus:bg-white/15 border border-white/20 focus:border-indigo-400 rounded-2xl py-3.5 pl-12 pr-28 text-xs lg:text-sm text-white placeholder:text-slate-400 focus:outline-none transition-all shadow-inner backdrop-blur-md"
                 />
                 <button
@@ -195,7 +292,6 @@ const Dashboard = ({
             2. KPI STATS CARDS
         ───────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Organizations */}
           <div
             onClick={() => onNavigate?.('organizations')}
             className="group p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
@@ -206,10 +302,10 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Kurumlar / Müşteriler</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Kurumlar / Portföyler</p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-extrabold text-slate-900">{stats.organizations}</span>
-              <span className="text-xs text-slate-500 font-medium">aktif kurum</span>
+              <span className="text-xs text-slate-500 font-medium">aktif portföy</span>
             </div>
             <div className="mt-2 text-[11px] text-indigo-600 font-medium flex items-center gap-1">
               <span>Gezginde Görüntüle</span>
@@ -217,7 +313,6 @@ const Dashboard = ({
             </div>
           </div>
 
-          {/* Card 2: Folders */}
           <div
             onClick={() => onNavigate?.('organizations')}
             className="group p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:border-amber-300 hover:shadow-md transition-all cursor-pointer"
@@ -228,7 +323,7 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Portföyler & Klasörler</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Raflar & Klasörler</p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-extrabold text-slate-900">{totalFoldersCount}</span>
               <span className="text-xs text-slate-500 font-medium">düzenli klasör</span>
@@ -239,7 +334,6 @@ const Dashboard = ({
             </div>
           </div>
 
-          {/* Card 3: Documents */}
           <div
             onClick={() => onNavigate?.('documents')}
             className="group p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer"
@@ -261,7 +355,6 @@ const Dashboard = ({
             </div>
           </div>
 
-          {/* Card 4: Vectors */}
           <div
             onClick={() => onNavigate?.('inspector')}
             className="group p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:border-violet-300 hover:shadow-md transition-all cursor-pointer"
@@ -272,7 +365,7 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-violet-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Vektör Havuzu (RAG)</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Vektör Hafızası</p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-extrabold text-slate-900">{stats.vectors}</span>
               <span className="text-xs text-slate-500 font-medium">chunk indeksi</span>
@@ -285,7 +378,235 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            3. AI QUICK PROMPT SUGGESTIONS (SMART CHIPS)
+            3. CLEAN & IMPACTFUL CHARTS (DEPO ANALİTİĞİ & DAĞILIM)
+        ───────────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          
+          {/* Chart 1: Minimalist Donut Chart - Document Type Breakdown */}
+          <div className="lg:col-span-6 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <PieChart className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Belge Türü & Cins Dağılımı</h2>
+                    <p className="text-[11px] text-slate-400">Depoda saklanan evrakların format ve içerik türleri</p>
+                  </div>
+                </div>
+
+                {typeBreakdown.dominant && (
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs">
+                    🏆 En Çok: {typeBreakdown.dominant.label} (%{typeBreakdown.dominant.percent})
+                  </span>
+                )}
+              </div>
+
+              {/* Chart Visual & Legend Container */}
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-12 items-center gap-6">
+                
+                {/* SVG Donut Circle */}
+                <div className="sm:col-span-5 flex flex-col items-center justify-center relative">
+                  <div className="relative w-40 h-40 flex items-center justify-center">
+                    <svg viewBox="0 0 140 140" className="w-full h-full transform -rotate-90">
+                      {/* Background track circle */}
+                      <circle
+                        cx="70"
+                        cy="70"
+                        r={donutRadius}
+                        fill="transparent"
+                        stroke="#f1f5f9"
+                        strokeWidth="15"
+                      />
+                      {/* Colored Donut Segments */}
+                      {donutSegments.map((seg) => {
+                        const isHovered = hoveredType === seg.key;
+                        return (
+                          <circle
+                            key={seg.key}
+                            cx="70"
+                            cy="70"
+                            r={donutRadius}
+                            fill="transparent"
+                            stroke={seg.color}
+                            strokeWidth={isHovered ? "19" : "15"}
+                            strokeDasharray={seg.strokeDasharray}
+                            strokeDashoffset={seg.strokeDashoffset}
+                            strokeLinecap="round"
+                            className="transition-all duration-300 cursor-pointer"
+                            onMouseEnter={() => setHoveredType(seg.key)}
+                            onMouseLeave={() => setHoveredType(null)}
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {/* Donut Center Count & Label */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-2xl font-black text-slate-900 tracking-tight">
+                        {hoveredType
+                          ? typeBreakdown.items.find(i => i.key === hoveredType)?.count
+                          : typeBreakdown.total}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        {hoveredType
+                          ? typeBreakdown.items.find(i => i.key === hoveredType)?.label.split(' ')[0]
+                          : 'Belge'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clean Type Legend with Hover Highlighting */}
+                <div className="sm:col-span-7 space-y-2.5">
+                  {typeBreakdown.items.map((item) => {
+                    const isHovered = hoveredType === item.key;
+                    return (
+                      <div
+                        key={item.key}
+                        onMouseEnter={() => setHoveredType(item.key)}
+                        onMouseLeave={() => setHoveredType(null)}
+                        className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                          isHovered
+                            ? 'bg-slate-50 border-indigo-300 ring-2 ring-indigo-500/10 shadow-xs'
+                            : 'bg-white border-slate-100 hover:border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0 shadow-xs"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 truncate">{item.label}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{item.desc}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                          <span className="text-xs font-extrabold text-slate-900 font-mono">
+                            {item.count} adet
+                          </span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${item.lightBg} ${item.textColor}`}>
+                            %{item.percent}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Insight Pill */}
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Tüm belgeler OCR & Vektör indeksli</span>
+              </span>
+              <button
+                onClick={() => onNavigate?.('documents')}
+                className="font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Dokümanları İncele</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
+          {/* Chart 2: Portfolios / Organizations Share (Horizontal Bars) */}
+          <div className="lg:col-span-6 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Portföy Bilgi & Belge Hacmi</h2>
+                    <p className="text-[11px] text-slate-400">Hangi portföyde ne kadar arşiv ve evrak yükü var</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => onNavigate?.('organizations')}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Gezginde Aç</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Horizontal Bar Chart List */}
+              <div className="mt-4 space-y-3.5">
+                {orgBreakdown.map((org) => (
+                  <div
+                    key={org.id}
+                    onClick={() => onSelectOrg?.(org.id)}
+                    className="group p-2.5 rounded-xl hover:bg-slate-50/80 transition-all cursor-pointer border border-transparent hover:border-slate-200/80"
+                  >
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: org.color }}
+                        />
+                        <span className="font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                          {org.name}
+                        </span>
+                        {org.foldersCount > 0 && (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            ({org.foldersCount} klasör)
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-extrabold text-slate-900 font-mono text-xs">
+                          {org.count} doküman
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500 font-mono">
+                          %{org.percent}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress Track */}
+                    <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 group-hover:opacity-90"
+                        style={{
+                          width: `${Math.max(org.percent, 4)}%`,
+                          backgroundColor: org.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom Status Line */}
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-violet-500" />
+                <span>Toplam {stats.vectors} RAG parçası (Chunks) hazır</span>
+              </span>
+              <button
+                onClick={() => onNavigate?.('inspector')}
+                className="font-semibold text-violet-600 hover:text-violet-700 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Vektörleri İncele</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────
+            4. AI QUICK PROMPT SUGGESTIONS (SMART CHIPS)
         ───────────────────────────────────────────────────────────── */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs">
           <div className="flex items-center justify-between mb-4">
@@ -341,7 +662,7 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            4. ORGANIZATIONS / CLIENTS SHOWCASE
+            5. ORGANIZATIONS / CLIENTS SHOWCASE
         ───────────────────────────────────────────────────────────── */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -425,7 +746,7 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            5. RECENT DOCUMENTS & SYSTEM FORMAT BREAKDOWN
+            6. RECENT DOCUMENTS & QUICK WHATSAPP INTAKE
         ───────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Left: Recent Documents Table (2 columns wide) */}
@@ -508,85 +829,46 @@ const Dashboard = ({
             )}
           </div>
 
-          {/* Right: Storage & Format Distribution Widget (1 column) */}
+          {/* Right: Quick Note & WhatsApp Intake Card */}
           <div className="space-y-4">
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs">
-              <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-600" />
-                <span>Belge Formatları</span>
-              </h2>
-
-              <div className="space-y-3">
-                {/* PDF */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600 font-medium flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-red-500" />
-                      PDF Dokümanları
-                    </span>
-                    <span className="font-bold text-slate-800">{pdfCount}</span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full bg-red-500 rounded-full"
-                      style={{ width: `${stats.documents > 0 ? (pdfCount / stats.documents) * 100 : 0}%` }}
-                    />
-                  </div>
+            <div className="rounded-3xl p-6 bg-gradient-to-br from-emerald-600 to-teal-800 text-white shadow-md flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center mb-3 backdrop-blur-xs">
+                  <MessageSquare className="w-5 h-5 text-white" />
                 </div>
+                <h3 className="text-sm font-bold">Hızlı Not & WhatsApp Girişi</h3>
+                <p className="text-xs text-emerald-100 mt-1.5 leading-relaxed">
+                  Danışman mesajlarını, telefon görüşmelerini veya fiyat güncellemelerini ekleyin; Depo Yöneticisi doğru rafa yerleştirsin.
+                </p>
+              </div>
 
-                {/* Images & OCR */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600 font-medium flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      Görsel & Tapu / OCR
-                    </span>
-                    <span className="font-bold text-slate-800">{imageCount}</span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 rounded-full"
-                      style={{ width: `${stats.documents > 0 ? (imageCount / stats.documents) * 100 : 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* WhatsApp & Notes */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600 font-medium flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      WhatsApp & Notlar
-                    </span>
-                    <span className="font-bold text-slate-800">{whatsappCount}</span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full"
-                      style={{ width: `${stats.documents > 0 ? (whatsappCount / stats.documents) * 100 : 0}%` }}
-                    />
-                  </div>
-                </div>
+              <div className="mt-5 space-y-2">
+                <button
+                  onClick={() => onOpenNoteModal?.()}
+                  className="w-full py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-98 flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Metin / Not Ekle</span>
+                </button>
+                <button
+                  onClick={() => onNavigate?.('upload')}
+                  className="w-full py-2 bg-emerald-700/60 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>WhatsApp Webhook Testi</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
               </div>
             </div>
 
-            {/* Quick WhatsApp / Quick Note Promo Card */}
-            <div className="rounded-3xl p-5 bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center mb-3 backdrop-blur-xs">
-                  <MessageSquare className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="text-sm font-bold">WhatsApp Sohbetlerini İndeksleyin</h3>
-                <p className="text-[11px] text-emerald-100 mt-1 leading-relaxed">
-                  Müşteriyle anlaştığınız şartları veya WhatsApp konuşmasını yapıştırın; yapay zeka RAG hafızasına eklesin.
-                </p>
+            {/* Warehouse Quick Summary Chip */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs">
+              <div className="flex items-center gap-2.5 mb-2">
+                <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                <h4 className="text-xs font-bold text-slate-900">Depo Durumu</h4>
               </div>
-              <button
-                onClick={() => onOpenNoteModal?.()}
-                className="mt-4 w-full py-2 bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
-              >
-                + Not Ekle
-              </button>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Tüm veritabanı yerel ortamda korunmaktadır. OpenAI embedding motoru ve cosine benzerlik araması devrededir.
+              </p>
             </div>
           </div>
         </div>
