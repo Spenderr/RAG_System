@@ -51,9 +51,15 @@ function App() {
     setActiveView('inspector');
   };
 
-  const handleViewDocument = (docName) => {
+  const handleViewDocument = (docParam, page) => {
     setActiveView('documents');
-    setReaderDoc(docName);
+    if (typeof docParam === 'object' && docParam !== null) {
+      setReaderDoc(docParam);
+    } else if (page) {
+      setReaderDoc({ docName: docParam, page });
+    } else {
+      setReaderDoc(docParam);
+    }
   };
 
   return (

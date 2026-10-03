@@ -3,6 +3,8 @@ import re
 import json
 import base64
 import asyncio
+import uuid
+import urllib.parse
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from datetime import datetime
@@ -392,52 +394,60 @@ def chunk_by_sections_or_paragraphs(full_text_with_pages: List[tuple], max_chunk
 
 async def ai_detect_organization(filename: str, text_preview: str) -> dict:
     """
-    Use AI to analyze a document and suggest which organization/company it belongs to.
-    Returns: { suggested_org: str, confidence: str, reasoning: str, suggested_tags: [] }
+    Use AI to analyze a document and suggest which organization and distinct portfolio/folder it belongs to.
     """
     existing_orgs = [
-        {"id": oid, "name": org["name"], "description": org.get("description", "")}
+        {
+            "id": oid,
+            "name": org["name"],
+            "description": org.get("description", ""),
+            "folders": org.get("folders", [])
+        }
         for oid, org in organizations_db["organizations"].items()
         if not org.get("is_system", False)
     ]
 
     org_list_text = "\n".join([
-        f"- ID: {o['id']}, Name: {o['name']}, Desc: {o['description']}"
+        f"- ID: {o['id']}, Name: {o['name']}, Existing Folders: {o.get('folders', [])}"
         for o in existing_orgs
-    ]) if existing_orgs else "No organizations exist yet."
+    ]) if existing_orgs else "Henüz kayıtlı kurum yok."
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    prompt = f"""Analyze this document and determine which organization/company it belongs to.
+    prompt = f"""Sen akıllı bir gayrimenkul ve portföy arşiv uzmanısın.
+Aşağıdaki dokümanı analiz et; ait olduğu kurumu, taşınmaz/lokasyon bazlı PORTFÖY KLASÖRÜNÜ ve etiketlerini belirle.
 
-EXISTING ORGANIZATIONS:
+MEVCUT KURUMLAR VE KLASÖRLERİ:
 {org_list_text}
 
-DOCUMENT FILENAME: {filename}
-DOCUMENT PREVIEW (first 2000 chars):
-{text_preview[:2000]}
+DOKÜMAN ADI: {filename}
+DOKÜMAN METNİ ÖZETİ:
+{text_preview[:2500]}
 
-Respond in this exact JSON format:
+KURALLAR:
+1. KURUM:
+   - Dokümanda geçen kişi/firma isimlerine göre mevcut kurumlardan birini seç ("suggested_org_id") veya yeni kurum adı ver ("suggested_org_name").
+2. PORTFÖY / KLASÖR ADLANDIRMA (ÇOK ÖNEMLİ):
+   - Her farklı arsa, daire, il/ilçe veya proje (örn. Silivri, Dikili, Kadıköy, Bodrum) AYRI BİR PORTFÖY KLASÖRÜDÜR.
+   - Seçilen kurumda önceden bir klasör (örn: "İzmir Dikili") olsa dahi, eğer bu doküman farklı bir taşınmaza (örn. "Silivri Arsa") aitse ASLA eski klasöre ekleme! Mutlaka o yeni taşınmaza özel YENİ bir Klasör Adı öner (örn. "İstanbul Silivri Arsa").
+   - Yalnızca bu doküman mevcut klasördeki taşınmazın aynısıysa o klasör adını ver.
+3. ETİKETLER:
+   - 2-4 adet net Türkçe etiket: ["tapu", "imar", "silivri", "arsa", "sozlesme"] gibi.
+
+Yanıtı kesinlikle bu JSON formatında ver:
 {{
-  "suggested_org_id": "<existing org ID if matches, or null if new org needed>",
-  "suggested_org_name": "<organization name detected from document>",
-  "confidence": "<high/medium/low>",
-  "reasoning": "<brief explanation in English>",
-  "suggested_tags": ["tag1", "tag2"],
-  "doc_type": "<contract/proposal/invoice/procedure/report/correspondence/other>"
+  "suggested_org_id": "<eşleşen ID veya null>",
+  "suggested_org_name": "<kurum adı>",
+  "suggested_folder": "<taşınmaza/lokasyona özel klasör adı>",
+  "confidence": "high/medium/low",
+  "reasoning": "<kısa açıklama>",
+  "suggested_tags": ["etiket1", "etiket2"],
+  "doc_type": "contract/proposal/invoice/procedure/report/correspondence/other"
 }}
-
-Rules:
-- If the document clearly belongs to an existing org, use its ID
-- If it's from a new company/source, set suggested_org_id to null and provide the name
-- Look for company names, letterheads, signatures, addresses
-- Suggest relevant tags based on content type
-- doc_type should categorize what kind of document this is"""
+"""
 
     try:
-        result = llm.invoke([HumanMessage(content=prompt)])
-        # Parse JSON from response
+        result = await llm.ainvoke([HumanMessage(content=prompt)])
         content = result.content.strip()
-        # Extract JSON if wrapped in markdown code block
         if "```" in content:
             content = re.search(r'```(?:json)?\s*(.*?)```', content, re.DOTALL)
             content = content.group(1).strip() if content else "{}"
@@ -447,6 +457,7 @@ Rules:
         return {
             "suggested_org_id": None,
             "suggested_org_name": None,
+            "suggested_folder": "",
             "confidence": "low",
             "reasoning": f"AI detection failed: {str(e)}",
             "suggested_tags": [],
@@ -463,11 +474,14 @@ class CreateOrgRequest(BaseModel):
     description: str = ""
     color: str = "#6366f1"
     tags: List[str] = []
+    folders: List[str] = []
 
 
 class AssignDocRequest(BaseModel):
     org_id: str
+    folder: Optional[str] = None
     tags: List[str] = []
+    doc_type: Optional[str] = None
 
 
 class UpdateOrgRequest(BaseModel):
@@ -475,14 +489,68 @@ class UpdateOrgRequest(BaseModel):
     description: Optional[str] = None
     color: Optional[str] = None
     tags: Optional[List[str]] = None
+    folders: Optional[List[str]] = None
+
+
+class MoveFolderRequest(BaseModel):
+    folder: str
+
+
+class FolderCreateRequest(BaseModel):
+    name: str
+
+
+class FolderDeleteRequest(BaseModel):
+    name: str
+
+
+class CreateNoteRequest(BaseModel):
+    title: str
+    content: str
+    org_id: Optional[str] = None
+    folder: Optional[str] = None
+    tags: Optional[List[str]] = []
+    format_with_ai: Optional[bool] = False
+    doc_type: Optional[str] = "whatsapp"
+
+
+class RenameDocRequest(BaseModel):
+    new_name: str
+
+
+class BatchAnalyzeRequest(BaseModel):
+    filenames: List[str]
+
+
+class BatchCommitRequest(BaseModel):
+    org_id: Optional[str] = None
+    org_name: Optional[str] = None
+    folder: Optional[str] = None
+    tags: Optional[List[str]] = []
+    file_renames: Dict[str, str] = {}
+
+
+class BatchDeleteRequest(BaseModel):
+    filenames: List[str]
+
+
+class BatchMoveRequest(BaseModel):
+    filenames: List[str]
+    target_org_id: Optional[str] = None
+    target_folder: Optional[str] = None
 
 
 @app.get("/api/organizations")
 async def get_organizations():
-    """List all organizations with their document counts."""
+    """List all organizations with their document counts and sub-folders."""
     result = []
     for org_id, org in organizations_db["organizations"].items():
-        # Count documents in this org
+        # Collect all folders
+        folders_set = set(org.get("folders", []))
+        for assignment in organizations_db["document_assignments"].values():
+            if assignment.get("org_id") == org_id and assignment.get("folder"):
+                folders_set.add(assignment["folder"])
+
         doc_count = sum(
             1 for assignment in organizations_db["document_assignments"].values()
             if assignment.get("org_id") == org_id
@@ -493,6 +561,7 @@ async def get_organizations():
             "description": org.get("description", ""),
             "color": org.get("color", "#6366f1"),
             "tags": org.get("tags", []),
+            "folders": sorted(list(folders_set)),
             "document_count": doc_count,
             "created_at": org.get("created_at", ""),
             "is_system": org.get("is_system", False),
@@ -504,7 +573,6 @@ async def get_organizations():
 async def create_organization(body: CreateOrgRequest):
     """Create a new organization."""
     org_id = re.sub(r'[^a-z0-9_]', '_', body.name.lower().strip())
-    # Ensure unique
     base_id = org_id
     counter = 1
     while org_id in organizations_db["organizations"]:
@@ -516,6 +584,7 @@ async def create_organization(body: CreateOrgRequest):
         "description": body.description.strip(),
         "color": body.color,
         "tags": body.tags,
+        "folders": body.folders,
         "created_at": datetime.now().isoformat(),
         "is_system": False,
     }
@@ -537,8 +606,61 @@ async def update_organization(org_id: str, body: UpdateOrgRequest):
         org["color"] = body.color
     if body.tags is not None:
         org["tags"] = body.tags
+    if body.folders is not None:
+        org["folders"] = body.folders
     save_organizations()
     return {"status": "updated", "id": org_id}
+
+
+@app.post("/api/organizations/{org_id}/folders")
+async def create_org_folder(org_id: str, body: FolderCreateRequest):
+    """Create a new folder/portfolio inside an organization."""
+    if org_id not in organizations_db["organizations"]:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    org = organizations_db["organizations"][org_id]
+    if "folders" not in org:
+        org["folders"] = []
+    folder_name = body.name.strip()
+    if folder_name and folder_name not in org["folders"]:
+        org["folders"].append(folder_name)
+        save_organizations()
+    return {"status": "created", "folder": folder_name, "folders": org["folders"]}
+
+
+@app.delete("/api/organizations/{org_id}/folders/{folder_name:path}")
+async def delete_org_folder_path(org_id: str, folder_name: str):
+    """Delete a folder/portfolio from an organization (unfolders its documents)."""
+    return await _do_delete_folder(org_id, folder_name)
+
+
+@app.post("/api/organizations/{org_id}/folders/delete")
+async def delete_org_folder_post(org_id: str, body: FolderDeleteRequest):
+    """Delete a folder/portfolio from an organization via POST body."""
+    return await _do_delete_folder(org_id, body.name)
+
+
+async def _do_delete_folder(org_id: str, raw_folder_name: str):
+    if org_id not in organizations_db["organizations"]:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    target_folder = urllib.parse.unquote(raw_folder_name).strip()
+    org = organizations_db["organizations"][org_id]
+
+    if "folders" in org:
+        org["folders"] = [
+            f for f in org["folders"]
+            if f.strip() != target_folder and urllib.parse.unquote(f).strip() != target_folder
+        ]
+
+    # Clear folder from docs in this org
+    for filename, assignment in organizations_db["document_assignments"].items():
+        if assignment.get("org_id") == org_id:
+            curr_folder = assignment.get("folder", "")
+            if curr_folder and (curr_folder.strip() == target_folder or urllib.parse.unquote(curr_folder).strip() == target_folder):
+                assignment["folder"] = ""
+
+    save_organizations()
+    return {"status": "deleted", "folder": target_folder}
 
 
 @app.delete("/api/organizations/{org_id}")
@@ -553,6 +675,7 @@ async def delete_organization(org_id: str):
     for filename, assignment in organizations_db["document_assignments"].items():
         if assignment.get("org_id") == org_id:
             assignment["org_id"] = "__unassigned__"
+            assignment["folder"] = ""
 
     del organizations_db["organizations"][org_id]
     save_organizations()
@@ -561,7 +684,7 @@ async def delete_organization(org_id: str):
 
 @app.get("/api/organizations/{org_id}/documents")
 async def get_org_documents(org_id: str):
-    """Get all documents in an organization."""
+    """Get all documents in an organization with their folder/portfolio."""
     if org_id not in organizations_db["organizations"]:
         raise HTTPException(status_code=404, detail="Organization not found")
 
@@ -574,6 +697,7 @@ async def get_org_documents(org_id: str):
                 "chunk_count": doc_info.get("chunk_count", 0),
                 "char_count": doc_info.get("char_count", 0),
                 "file_type": doc_info.get("file_type", filename.rsplit(".", 1)[-1].lower() if "." in filename else "unknown"),
+                "folder": assignment.get("folder", ""),
                 "tags": assignment.get("tags", []),
                 "doc_type": assignment.get("doc_type", "other"),
                 "assigned_at": assignment.get("assigned_at", ""),
@@ -584,20 +708,65 @@ async def get_org_documents(org_id: str):
 
 @app.post("/api/documents/{filename}/assign")
 async def assign_document(filename: str, body: AssignDocRequest):
-    """Assign a document to an organization with tags."""
+    """Assign a document to an organization with folder/portfolio and tags."""
     if filename not in processed_documents:
         raise HTTPException(status_code=404, detail="Document not found")
     if body.org_id not in organizations_db["organizations"]:
         raise HTTPException(status_code=404, detail="Organization not found")
 
+    existing_assignment = organizations_db["document_assignments"].get(filename, {})
+    folder = body.folder.strip() if body.folder else existing_assignment.get("folder", "")
+
     organizations_db["document_assignments"][filename] = {
         "org_id": body.org_id,
+        "folder": folder,
         "tags": body.tags,
+        "doc_type": body.doc_type or existing_assignment.get("doc_type", "other"),
         "assigned_at": datetime.now().isoformat(),
         "auto_detected": False,
     }
+
+    # Record folder in org's folder list if not empty
+    if folder and body.org_id in organizations_db["organizations"]:
+        org = organizations_db["organizations"][body.org_id]
+        if "folders" not in org:
+            org["folders"] = []
+        if folder not in org["folders"]:
+            org["folders"].append(folder)
+
     save_organizations()
-    return {"status": "assigned", "org_id": body.org_id}
+    return {"status": "assigned", "org_id": body.org_id, "folder": folder}
+
+
+@app.put("/api/documents/{filename}/folder")
+async def move_document_folder(filename: str, body: MoveFolderRequest):
+    """Move a document to a specific folder/portfolio."""
+    if filename not in processed_documents:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    folder = body.folder.strip()
+    if filename not in organizations_db["document_assignments"]:
+        organizations_db["document_assignments"][filename] = {
+            "org_id": "__unassigned__",
+            "folder": folder,
+            "tags": [],
+            "doc_type": "other",
+            "assigned_at": datetime.now().isoformat(),
+            "auto_detected": False,
+        }
+    else:
+        assignment = organizations_db["document_assignments"][filename]
+        assignment["folder"] = folder
+        org_id = assignment.get("org_id")
+        if org_id and org_id in organizations_db["organizations"] and folder:
+            org = organizations_db["organizations"][org_id]
+            if "folders" not in org:
+                org["folders"] = []
+            if folder not in org["folders"]:
+                org["folders"].append(folder)
+
+    save_organizations()
+    return {"status": "success", "filename": filename, "folder": folder}
 
 
 @app.post("/api/documents/{filename}/detect-org")
@@ -630,7 +799,7 @@ async def get_document_assignment(filename: str):
     """Get the organization assignment for a document."""
     assignment = organizations_db["document_assignments"].get(filename)
     if not assignment:
-        return {"assigned": False, "org_id": None, "tags": []}
+        return {"assigned": False, "org_id": None, "folder": "", "tags": []}
 
     org = organizations_db["organizations"].get(assignment["org_id"], {})
     return {
@@ -638,17 +807,339 @@ async def get_document_assignment(filename: str):
         "org_id": assignment["org_id"],
         "org_name": org.get("name", "Unknown"),
         "org_color": org.get("color", "#6b7280"),
+        "folder": assignment.get("folder", ""),
         "tags": assignment.get("tags", []),
         "doc_type": assignment.get("doc_type", "other"),
         "auto_detected": assignment.get("auto_detected", False),
     }
 
 
-# ──────────────────────────────────────────────────────────────────
-# ENDPOINTS — UPLOAD & PROCESS
-# ──────────────────────────────────────────────────────────────────
+@app.post("/api/documents/note")
+async def create_note_document(req: CreateNoteRequest):
+    """
+    Creates a new text/WhatsApp note document directly, vectorizes it, 
+    and assigns it to an organization & folder.
+    """
+    if not req.title.strip() or not req.content.strip():
+        raise HTTPException(status_code=400, detail="Başlık ve içerik gereklidir")
+
+    clean_title = re.sub(r'[^a-zA-Z0-9_\-çğıöşüÇĞİÖŞÜ\s]', '', req.title.strip()).replace(' ', '_')
+    if not clean_title:
+        clean_title = f"not_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    filename = f"{clean_title}.txt"
+    counter = 1
+    file_path = UPLOAD_DIR / filename
+    while file_path.exists():
+        filename = f"{clean_title}_{counter}.txt"
+        file_path = UPLOAD_DIR / filename
+        counter += 1
+
+    final_content = req.content
+    if req.format_with_ai:
+        try:
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+            prompt = (
+                "Aşağıda bir WhatsApp mesajlaşması, ses dökümü veya hızlı tutulmuş bir portföy notu bulunmaktadır.\n"
+                "Bu metni RAG yapay zeka sistemi ve kullanıcı için son derece anlaşılır, madde madde düzenlenmiş bir Portföy Notu haline getir.\n\n"
+                "Kurallar:\n"
+                "1. En üste açıklayıcı bir '# Portföy / Görüşme Özeti' başlığı koy.\n"
+                "2. İrtibat kişileri, telefonlar, fiyatlar, tarihler, adres/lokasyon, şartlar ve talepleri madde madde (bullet points) ve net başlıklarla listele.\n"
+                "3. En alta '---\\n### Orijinal Metin / Mesaj Dökümü\\n' başlığı altında orijinal metni de ekle.\n"
+                "4. Yanıtı yalnızca Türkçe ver.\n\n"
+                f"Metin:\n{req.content}"
+            )
+            ai_res = await llm.ainvoke(prompt)
+            if ai_res.content and ai_res.content.strip():
+                final_content = ai_res.content.strip()
+        except Exception as e:
+            print(f"[create_note] AI format warning: {e}")
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(final_content)
+
+    pages_data = [(1, final_content)]
+    chunks, chunk_details = chunk_by_sections_or_paragraphs(pages_data)
+
+    all_metadatas = [
+        {
+            "source": filename,
+            "chunk_index": d["index"],
+            "total_chunks": len(chunks),
+            "page": 1,
+            "title": d.get("title", req.title)
+        }
+        for d in chunk_details
+    ]
+
+    vector_store.add_texts(texts=chunks, metadatas=all_metadatas)
+
+    processed_documents[filename] = {
+        "text": final_content,
+        "chunks": chunks,
+        "chunk_details": chunk_details,
+        "char_count": len(final_content),
+        "chunk_count": len(chunks),
+        "file_type": "txt",
+    }
+
+    org_id = req.org_id if req.org_id and req.org_id in organizations_db["organizations"] else None
+    if not org_id and req.org_id != "__unassigned__":
+        ai_result = await ai_detect_organization(filename, final_content)
+        if ai_result.get("confidence") == "high" and ai_result.get("suggested_org_id"):
+            org_id = ai_result["suggested_org_id"]
+
+    tags = req.tags if req.tags else ([req.doc_type] if req.doc_type else ["whatsapp"])
+    organizations_db["document_assignments"][filename] = {
+        "org_id": org_id or "__unassigned__",
+        "folder": req.folder.strip() if req.folder else "",
+        "tags": tags,
+        "doc_type": req.doc_type or "whatsapp",
+        "assigned_at": datetime.now().isoformat(),
+        "auto_detected": False,
+    }
+    save_organizations()
+
+    return {
+        "filename": filename,
+        "char_count": len(final_content),
+        "chunk_count": len(chunks),
+        "org_id": org_id or "__unassigned__",
+        "folder": req.folder.strip() if req.folder else "",
+        "doc_type": req.doc_type or "whatsapp",
+    }
+
+
+def rename_doc_internal(old_name: str, new_name_raw: str) -> str:
+    global processed_documents
+    if not new_name_raw or not new_name_raw.strip():
+        return old_name
+
+    ext = old_name.rsplit(".", 1)[-1].lower() if "." in old_name else "txt"
+    raw_base = new_name_raw.strip()
+    if raw_base.lower().endswith(f".{ext}"):
+        raw_base = raw_base[:-len(f".{ext}")]
+
+    clean_base = re.sub(r'[^a-zA-Z0-9_\-çğıöşüÇĞİÖŞÜ\s]', '', raw_base).strip().replace(' ', '_')
+    if not clean_base:
+        return old_name
+
+    new_filename = f"{clean_base}.{ext}"
+    if new_filename == old_name:
+        return old_name
+
+    counter = 1
+    new_path = UPLOAD_DIR / new_filename
+    while new_path.exists() and new_filename != old_name:
+        new_filename = f"{clean_base}_{counter}.{ext}"
+        new_path = UPLOAD_DIR / new_filename
+        counter += 1
+
+    old_path = UPLOAD_DIR / old_name
+    if old_path.exists():
+        try:
+            old_path.rename(new_path)
+        except Exception as e:
+            print(f"[rename_doc] File rename error: {e}")
+
+    if old_name in processed_documents:
+        doc_info = processed_documents.pop(old_name)
+        processed_documents[new_filename] = doc_info
+
+    if old_name in organizations_db["document_assignments"]:
+        assignment = organizations_db["document_assignments"].pop(old_name)
+        organizations_db["document_assignments"][new_filename] = assignment
+        save_organizations()
+
+    try:
+        data = vector_store.get()
+        ids_to_update = []
+        updated_metadatas = []
+        for doc_id, meta in zip(data.get("ids", []), data.get("metadatas", [])):
+            if meta.get("source") == old_name:
+                meta["source"] = new_filename
+                ids_to_update.append(doc_id)
+                updated_metadatas.append(meta)
+        if ids_to_update:
+            vector_store._collection.update(ids=ids_to_update, metadatas=updated_metadatas)
+    except Exception as e:
+        print(f"[rename_doc] Vector metadata update warning: {e}")
+
+    return new_filename
+
+
+@app.post("/api/documents/{filename}/rename")
+async def rename_document_endpoint(filename: str, req: RenameDocRequest):
+    new_name = rename_doc_internal(filename, req.new_name)
+    return {"status": "success", "old_name": filename, "new_name": new_name}
+
+
+@app.post("/api/batch-analyze")
+async def batch_analyze_documents(req: BatchAnalyzeRequest):
+    if not req.filenames:
+        raise HTTPException(status_code=400, detail="Filenames required")
+
+    existing_orgs = [
+        {"id": oid, "name": org["name"], "description": org.get("description", ""), "folders": org.get("folders", [])}
+        for oid, org in organizations_db["organizations"].items()
+        if not org.get("is_system", False)
+    ]
+
+    files_context = []
+    for fname in req.filenames:
+        text = ""
+        if fname in processed_documents:
+            text = processed_documents[fname].get("text", "")
+        if not text:
+            file_path = UPLOAD_DIR / fname
+            if file_path.exists():
+                ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
+                if ext == "pdf":
+                    try:
+                        reader = pypdf.PdfReader(file_path)
+                        text = "\n".join(page.extract_text() or "" for page in reader.pages[:3])
+                    except: pass
+                elif ext in IMAGE_EXTENSIONS:
+                    try:
+                        text = await extract_text_from_image(file_path)
+                    except: pass
+                elif ext == "txt":
+                    try:
+                        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                            text = f.read()[:2500]
+                    except: pass
+        files_context.append({
+            "filename": fname,
+            "preview": text[:2500] if text else "İçerik okunamadı."
+        })
+
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+    prompt = f"""Sen üst düzey bir gayrimenkul, portföy ve kurumsal doküman arşiv uzmanısın.
+Kullanıcı sisteme dosya(lar) yüklüyor. Amacın KULLANICIYA HİÇBİR MANUEL İŞ BIRAKMADAN tüm dosyaları doğru kuruma, doğru portföy klasörüne, temiz Türkçe dosya isimlerine ve zengin etiketlere otomatik bağlamaktır.
+
+MEVCUT KURUMLAR VE MEVCUT KLASÖRLERİ:
+{json.dumps(existing_orgs, ensure_ascii=False, indent=2)}
+
+YÜKLENEN DOSYALARIN METİN ÖZETLERİ ({len(req.filenames)} adet):
+{json.dumps(files_context, ensure_ascii=False, indent=2)}
+
+ANALİZ VE OTOMATİK DÜZENLEME KURALLARI:
+1. KURUM EŞLEŞTİRMESİ (ÇOK ÖNEMLİ):
+   - Dosya içeriklerindeki kişi isimleri, şirket unvanları, antetler, WhatsApp konuşmacı adları veya imzalara bak.
+   - Eğer içerik Mevcut Kurumlar listesindeki bir kurumla (örneğin "Nuran Hanım", "Bassel Group" vb.) uyuşuyorsa veya kısmen geçiyorsa ("Nuran", "Bassel", vb.), "suggested_org_id" alanına o kurumun ID'sini mutlaka yaz.
+   - Eğer tamamen yeni bir kurum veya şahıs ise "suggested_org_id": null yap ve "suggested_org_name" alanına temiz kurum adını yaz.
+
+2. PORTFÖY / KLASÖR ADLANDIRMA (ÇOK KRİTİK - TAŞINMAZ / LOKASYON AYRIMI):
+   - Her farklı arsa, daire, il/ilçe, mahalle, proje veya ada-parsel AYRI BİR PORTFÖY KLASÖRÜDÜR.
+   - DİKKAT: Kurum aynı olsa bile (örneğin "Nuran Hanım"), eğer o kurumun mevcut klasörleri (örn: "İzmir Dikili") ile yüklenen yeni dosyaların lokasyonu/konusu (örn: "Silivri Arsa", "Kadıköy Daire", "Bodrum Villa") FARKLı ise, ASLA eski klasörün adını verme! Mutlaka o yeni taşınmaza özel YENİ BİR KLASÖR ADI OLUŞTUR (örn: "İstanbul Silivri Arsa" veya "Silivri Selimpaşa Portföyü").
+   - Yalnızca ve yalnızca yüklenen evraklar mevcut bir klasördeki taşınmazın aynısına (örneğin yine Dikili arsasının yeni bir tapusu/yazışması) aitse o mevcut klasör adını ver.
+   - Eğer yeni bir taşınmaz ise, dosyalarda geçen İl / İlçe / Mahalle / Proje ve Gayrimenkul tipini içeren net, şık bir portföy klasör adı üret (örn: "Silivri Arsa Portföyü", "Kadıköy 3+1 Daire").
+
+3. DOSYA İSİMLERİNİ TEMİZLEME:
+   - "Ekran Resmi 2026-...", "IMG_4021.PNG", "scan_1.pdf" gibi anlamsız isimleri YASAKLA.
+   - Her dosyanın içeriğini tam yansıtan Türkçe, net ve alt çizgili dosya adı üret (örn: "1_Silivri_Tapu_Senedi.png", "2_Silivri_Imar_Krokisi.pdf", "3_Silivri_WhatsApp_Notu.png").
+
+4. ZENGİN OTOMATİK ETİKETLER (Kullanıcı etiketle uğraşmasın):
+   - İçeriğe göre 2-4 adet net Türkçe etiket üret: ["tapu", "imar", "silivri", "arsa", "sozlesme", "whatsapp_notu"] gibi.
+
+5. ÖZET:
+   - "batch_summary": Yapay zekanın ne tespit ettiğini kullanıcıya 1 cümlede bildiren kibar ve net Türkçe açıklama.
+
+Yanıtı kesinlikle bu JSON şemasında ver:
+{{
+  "is_portfolio_batch": true/false,
+  "suggested_org_id": "<eşleşen kurum ID veya null>",
+  "suggested_org_name": "<kurum adı>",
+  "suggested_folder": "<taşınmaza/lokasyona özel net portföy/klasör adı>",
+  "confidence": "high/medium/low",
+  "batch_summary": "<1 cümlelik açıklama>",
+  "file_renames": {{
+    "orijinal_adi.ext": "1_Temiz_Dosya_Adi.ext"
+  }},
+  "suggested_tags": ["etiket1", "etiket2", "etiket3"]
+}}
+"""
+
+    try:
+        res = await llm.ainvoke([HumanMessage(content=prompt)])
+        content = res.content.strip()
+        if "```" in content:
+            content = re.search(r'```(?:json)?\s*(.*?)```', content, re.DOTALL)
+            content = content.group(1).strip() if content else "{}"
+        parsed = json.loads(content)
+        return parsed
+    except Exception as e:
+        print(f"[batch_analyze] Error: {e}")
+        return {
+            "is_portfolio_batch": len(req.filenames) > 1,
+            "suggested_org_id": None,
+            "suggested_org_name": None,
+            "suggested_folder": "Yeni Portföy" if len(req.filenames) > 1 else "",
+            "confidence": "low",
+            "batch_summary": "Dosyalar toplu olarak hazırlandı.",
+            "file_renames": {f: f for f in req.filenames},
+            "suggested_tags": ["portföy"]
+        }
+
+
+@app.post("/api/batch-commit")
+async def batch_commit_assignment(req: BatchCommitRequest):
+    """
+    Atomically renames files to their clean descriptive names,
+    creates the target folder in the organization (if not existing),
+    and assigns all files to that organization & folder.
+    """
+    target_org_id = req.org_id
+
+    # If new org name provided and no existing org_id
+    if not target_org_id and req.org_name:
+        new_org_id = str(uuid.uuid4())[:8]
+        organizations_db["organizations"][new_org_id] = {
+            "id": new_org_id,
+            "name": req.org_name.strip(),
+            "description": "",
+            "color": "#6366f1",
+            "tags": req.tags or [],
+            "folders": [req.folder.strip()] if req.folder and req.folder.strip() else [],
+            "created_at": datetime.now().isoformat(),
+            "is_system": False,
+        }
+        target_org_id = new_org_id
+    elif target_org_id and target_org_id in organizations_db["organizations"]:
+        org = organizations_db["organizations"][target_org_id]
+        if req.folder and req.folder.strip():
+            if "folders" not in org:
+                org["folders"] = []
+            if req.folder.strip() not in org["folders"]:
+                org["folders"].append(req.folder.strip())
+
+    save_organizations()
+
+    results = []
+    for old_name, new_name in req.file_renames.items():
+        actual_name = rename_doc_internal(old_name, new_name)
+        organizations_db["document_assignments"][actual_name] = {
+            "org_id": target_org_id or "__unassigned__",
+            "folder": req.folder.strip() if req.folder else "",
+            "tags": req.tags or [],
+            "doc_type": "portfolio" if len(req.file_renames) > 1 else "document",
+            "assigned_at": datetime.now().isoformat(),
+            "auto_detected": False,
+        }
+        results.append({
+            "old_name": old_name,
+            "new_name": actual_name,
+            "org_id": target_org_id,
+            "folder": req.folder.strip() if req.folder else "",
+        })
+
+    save_organizations()
+    return {"status": "success", "results": results, "org_id": target_org_id}
+
 
 @app.post("/api/upload")
+
 async def upload_file(file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename")
@@ -818,6 +1309,7 @@ async def get_documents():
             "org_id": org_id,
             "org_name": org.get("name", ""),
             "org_color": org.get("color", "#6b7280"),
+            "folder": assignment.get("folder", ""),
             "tags": assignment.get("tags", []),
             "doc_type": assignment.get("doc_type", ""),
         })
@@ -1025,6 +1517,78 @@ async def delete_document(filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/documents/batch-delete")
+async def batch_delete_documents(req: BatchDeleteRequest):
+    """Atomically delete multiple documents from vector store, metadata, and disk."""
+    global processed_documents
+    try:
+        data = vector_store.get()
+        files_set = set(req.filenames)
+        ids_to_delete = [
+            doc_id for doc_id, meta in zip(data.get("ids", []), data.get("metadatas", []))
+            if meta.get("source") in files_set
+        ]
+        if ids_to_delete:
+            vector_store.delete(ids=ids_to_delete)
+
+        deleted = []
+        for filename in req.filenames:
+            if filename in processed_documents:
+                del processed_documents[filename]
+            if filename in organizations_db["document_assignments"]:
+                del organizations_db["document_assignments"][filename]
+            file_path = UPLOAD_DIR / filename
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as ex:
+                    print(f"[batch_delete] File unlink error: {ex}")
+            deleted.append(filename)
+
+        save_organizations()
+        return {"status": "success", "deleted_count": len(deleted), "deleted_files": deleted}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/documents/batch-move")
+async def batch_move_documents(req: BatchMoveRequest):
+    """Atomically move multiple documents to a target organization and/or folder."""
+    try:
+        updated = []
+        for filename in req.filenames:
+            if filename in organizations_db["document_assignments"]:
+                assignment = organizations_db["document_assignments"][filename]
+                if req.target_org_id is not None:
+                    assignment["org_id"] = req.target_org_id
+                if req.target_folder is not None:
+                    assignment["folder"] = req.target_folder.strip()
+                updated.append(filename)
+            else:
+                organizations_db["document_assignments"][filename] = {
+                    "org_id": req.target_org_id or "__unassigned__",
+                    "folder": req.target_folder.strip() if req.target_folder else "",
+                    "tags": [],
+                    "doc_type": "document",
+                    "assigned_at": datetime.now().isoformat(),
+                    "auto_detected": False,
+                }
+                updated.append(filename)
+
+        # Add folder to target org if needed
+        if req.target_org_id and req.target_org_id in organizations_db["organizations"] and req.target_folder and req.target_folder.strip():
+            org = organizations_db["organizations"][req.target_org_id]
+            if "folders" not in org:
+                org["folders"] = []
+            if req.target_folder.strip() not in org["folders"]:
+                org["folders"].append(req.target_folder.strip())
+
+        save_organizations()
+        return {"status": "success", "updated_count": len(updated), "updated_files": updated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/documents/{filename}/reprocess")
 async def reprocess_document(filename: str):
     """Re-chunk an existing document using smart paragraph- and sentence-preserving rules."""
@@ -1135,20 +1699,27 @@ async def chat_endpoint(body: ChatMessage):
 
     combined = (
         f"Based on the following documents, answer this question: {query}\n\n"
-        f"Documents:\n{ctx}\n\n"
-        "IMPORTANT RULES:\n"
-        "1. Provide a clear, helpful answer using ONLY information from these documents.\n"
-        "2. ALWAYS mention which source document(s) and organization(s) the information comes from.\n"
-        "3. If multiple sources have relevant info, compare them and state which is most relevant.\n"
-        "4. If you can't find the answer, say so.\n"
-        "5. Format source references like: **[Document: filename.pdf | Organization: OrgName]**"
+        f"Documents Context:\n{ctx}\n\n"
+        "RESPONSE STRUCTURE & FORMATTING RULES (STRICT):\n"
+        "1. VISUAL STRUCTURE & READABILITY:\n"
+        "   - Start with a direct 1-2 sentence introductory summary answering the core question.\n"
+        "   - Leave an empty line between paragraphs, headers, and list sections for clean spacing.\n"
+        "   - Group key requirements, procedures, clauses, financial numbers, and critical conditions into clear Bullet Points (`- **Madde / Konu Başlığı**: Açıklama`).\n"
+        "   - Use bold text (`**...**`) for critical percentages, amounts, deadlines, and key terms to make scanning effortless.\n"
+        "   - If comparing different organizations or documents, use clear subheadings (`### Kurum/Doküman Adı`) or a clean markdown table.\n"
+        "   - End with a short summary or practical takeaway paragraph.\n"
+        "2. GROUNDING & SOURCE CITATIONS:\n"
+        "   - For each bullet point or major claim, cite the source cleanly at the end of the line in italics/parentheses: `*(Kaynak: DosyaAdı.pdf, s. 4 | Kurum: Bassel Group)*`\n"
+        "   - DO NOT insert bulky raw bracket tags in the middle of sentences.\n"
+        "3. ACCURACY & CONCISENESS:\n"
+        "   - Use ONLY information from the provided document chunks. If information is missing or unclear, explicitly note it."
     )
 
     messages = [
         SystemMessage(content=(
-            "You are a helpful assistant that answers questions based on a document library. "
-            "Always cite your sources with document name and organization. "
-            "When recommending something, clearly state which document and organization it's from."
+            "You are an expert AI Document & Organization Knowledge Assistant. "
+            "You provide highly organized, professional, visually clean, and well-spaced answers using Markdown. "
+            "Always structure answers with a short overview, clean bullet points with bold titles for critical items, double newlines between sections, and concise source citations."
         )),
     ] + chat_history + [
         HumanMessage(content=combined),

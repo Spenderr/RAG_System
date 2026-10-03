@@ -15,6 +15,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
 
   // Reader Modal State
   const [selectedReaderDoc, setSelectedReaderDoc] = useState(null);
+  const [selectedReaderPage, setSelectedReaderPage] = useState(1);
   const [readerMode, setReaderMode] = useState('pdf');
   const [docContent, setDocContent] = useState('');
   const [loadingContent, setLoadingContent] = useState(false);
@@ -24,6 +25,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
   // Assign Org Modal State
   const [assignModalDoc, setAssignModalDoc] = useState(null);
   const [targetOrgId, setTargetOrgId] = useState('');
+  const [docFolder, setDocFolder] = useState('');
   const [assignTags, setAssignTags] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [showCreateInlineInDocs, setShowCreateInlineInDocs] = useState(false);
@@ -72,8 +74,13 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
     }
   }, [openReaderDoc]);
 
-  const handleOpenReader = async (docName) => {
+  const handleOpenReader = async (docParam) => {
+    const docName = typeof docParam === 'object' && docParam !== null ? docParam.docName : docParam;
+    const pageNum = typeof docParam === 'object' && docParam !== null ? (docParam.page || 1) : 1;
+    if (!docName) return;
+
     setSelectedReaderDoc(docName);
+    setSelectedReaderPage(pageNum);
     const isPdf = docName.toLowerCase().endsWith('.pdf');
     const isImg = /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(docName);
     setReaderMode(isImg ? 'image' : isPdf ? 'pdf' : 'text');
@@ -139,7 +146,9 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
   const handleOpenAssign = (doc) => {
     setAssignModalDoc(doc);
     setTargetOrgId(doc.org_id || '__unassigned__');
+    setDocFolder(doc.folder || '');
     setAssignTags(doc.tags ? doc.tags.join(', ') : '');
+    setShowCreateInlineInDocs(false);
   };
 
   const handleSaveAssign = async () => {
@@ -151,6 +160,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           org_id: targetOrgId,
+          folder: docFolder.trim(),
           tags: assignTags.split(',').map(t => t.trim()).filter(Boolean),
         }),
       });
@@ -178,6 +188,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
           description: inlineDocOrgDesc.trim(),
           color: inlineDocOrgColor,
           tags: assignTags.split(',').map(t => t.trim()).filter(Boolean),
+          folders: docFolder.trim() ? [docFolder.trim()] : [],
         }),
       });
       if (!createRes.ok) throw new Error('Failed to create organization');
@@ -188,6 +199,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           org_id: newOrg.id,
+          folder: docFolder.trim(),
           tags: assignTags.split(',').map(t => t.trim()).filter(Boolean),
         }),
       });
@@ -196,6 +208,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
       setShowCreateInlineInDocs(false);
       setInlineDocOrgName('');
       setInlineDocOrgDesc('');
+      setDocFolder('');
       await fetchDocuments();
       await fetchOrganizations();
     } catch (err) {
@@ -327,6 +340,16 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                           <Building2 className="w-3 h-3" />
                           <span className="truncate max-w-[130px]">{orgName}</span>
                         </button>
+
+                        {/* Folder Badge */}
+                        {doc.folder && (
+                          <span
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80 max-w-[130px] truncate"
+                            title={`Klasör / Portföy: ${doc.folder}`}
+                          >
+                            📁 {doc.folder}
+                          </span>
+                        )}
                       </div>
 
                       {deleteConfirm === doc.name ? (
@@ -545,6 +568,56 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
               </div>
             )}
 
+            {/* Folder / Portfolio Selection */}
+            {(targetOrgId || showCreateInlineInDocs) && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📁 Folder / Portfolio</span>
+                    <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                  </label>
+                  {docFolder && (
+                    <button
+                      type="button"
+                      onClick={() => setDocFolder('')}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Existing Folder Suggestion Chips */}
+                {!showCreateInlineInDocs && organizations.find((o) => o.id === targetOrgId)?.folders?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {organizations
+                      .find((o) => o.id === targetOrgId)
+                      ?.folders.map((fld) => (
+                        <button
+                          key={fld}
+                          type="button"
+                          onClick={() => setDocFolder(fld)}
+                          className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${
+                            docFolder === fld
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          📁 {fld}
+                        </button>
+                      ))}
+                  </div>
+                )}
+
+                <input
+                  value={docFolder}
+                  onChange={(e) => setDocFolder(e.target.value)}
+                  placeholder="e.g. Portfolio A, Contracts, Photos or new folder..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 shadow-2xs"
+                />
+              </div>
+            )}
+
             <div className="mb-4">
               <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Tags (comma-separated)</label>
               <input
@@ -686,7 +759,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                 </div>
               ) : readerMode === 'pdf' && selectedReaderDoc.toLowerCase().endsWith('.pdf') ? (
                 <iframe
-                  src={`/api/documents/${encodeURIComponent(selectedReaderDoc)}/file`}
+                  src={`/api/documents/${encodeURIComponent(selectedReaderDoc)}/file${selectedReaderPage ? `#page=${selectedReaderPage}` : ''}`}
                   className="w-full h-full border-none bg-white"
                   title="PDF Reader"
                 />
