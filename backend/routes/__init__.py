@@ -3,3 +3,4 @@ from routes.documents import router as documents_router
 from routes.chat import router as chat_router
 from routes.stats import router as stats_router
 from routes.whatsapp import router as whatsapp_router
+

@@ -165,3 +165,4 @@ async def transcribe_audio_file(audio_path: Path) -> str:
             language="tr",
         )
     return transcript.text.strip()
+

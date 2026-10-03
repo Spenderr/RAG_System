@@ -175,11 +175,23 @@ const TextPreview = ({ filename, isWhatsApp }) => {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
   useEffect(() => {
     setLoading(true);
+    setIsEditing(false);
+    setSaveSuccess(false);
     fetch(`/api/documents/${encodeURIComponent(filename)}/content`)
       .then(r => r.json())
-      .then(d => setText(d.content || ''))
+      .then(d => {
+        setText(d.content || '');
+        setEditedText(d.content || '');
+      })
       .catch(() => setText('İçerik yüklenemedi.'))
       .finally(() => setLoading(false));
   }, [filename]);
@@ -190,6 +202,44 @@ const TextPreview = ({ filename, isWhatsApp }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleStartEdit = () => {
+    setEditedText(text);
+    setIsEditing(true);
+    setSaveSuccess(false);
+    setSaveError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedText(text);
+    setIsEditing(false);
+    setSaveError(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editedText.trim()) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(filename)}/content`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editedText }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Kayıt başarısız oldu');
+      }
+      setText(editedText);
+      setIsEditing(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } catch (e) {
+      setSaveError(e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-full">
       <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
@@ -197,23 +247,99 @@ const TextPreview = ({ filename, isWhatsApp }) => {
   );
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-          {isWhatsApp ? 'WhatsApp / Not İçeriği' : 'Metin İçeriği'}
-        </span>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition-colors"
-        >
-          {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-          <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
-        </button>
+    <div className="p-5 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            {isWhatsApp ? '💬 WhatsApp / Not Kaydı' : '📄 Metin İçeriği'}
+          </span>
+          {saveSuccess && (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              <Check className="w-3 h-3 text-emerald-600" />
+              Depo Hafızası Güncellendi
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {!isEditing ? (
+            <>
+              <button
+                onClick={handleStartEdit}
+                className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 px-2.5 py-1 rounded-lg border border-indigo-200/80 shadow-2xs transition-all cursor-pointer"
+                title="Notun içine yeni bilgi ekle veya düzenle"
+              >
+                <Edit2 className="w-3 h-3" />
+                <span>Düzenle / Not Düş</span>
+              </button>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+                <span>Vazgeç</span>
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Kaydediliyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Kaydet & Hafızayı Güncelle</span>
+                  </>
+                )}
+              </button>
+            </>
+          )}
+        </div>
       </div>
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-        <pre className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap font-sans">
-          {text}
-        </pre>
+
+      {saveError && (
+        <div className="mb-3 p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+          <X className="w-3.5 h-3.5 shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
+
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex-1 flex flex-col overflow-hidden">
+        {isEditing ? (
+          <div className="flex-1 flex flex-col">
+            <div className="mb-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span>İçeriği düzenleyin veya altına yeni notlar ekleyin (Markdown desteklenir)</span>
+              <span>{editedText.length.toLocaleString()} karakter</span>
+            </div>
+            <textarea
+              value={editedText}
+              onChange={(e) => setEditedText(e.target.value)}
+              className="flex-1 w-full p-3 text-xs text-slate-800 font-sans leading-relaxed border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none custom-scrollbar"
+              placeholder="Not içeriğini buraya yazın..."
+              autoFocus
+            />
+          </div>
+        ) : (
+          <div className="overflow-y-auto flex-1 custom-scrollbar pr-1">
+            <pre className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap font-sans">
+              {text}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );

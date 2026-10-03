@@ -130,8 +130,27 @@ async def simulate_whatsapp_message(req: SimulateWhatsAppRequest):
         sender_name=req.sender_name or "Emlak Danışmanı",
     )
 
+    org_name = result.get("org_name", "Genel")
+    folder = result.get("folder", "WhatsApp Notları")
+    title = result.get("title", "Portföy Notu")
+
+    reply_text = (
+        f"🏢 *MainChunk Depo Yöneticisi*\n\n"
+        f"✅ Sayın {req.sender_name or 'Danışman'},\n"
+        f"Gönderdiğiniz not teslim alındı ve depoya yerleştirildi.\n\n"
+        f"📦 *Raf (Portföy):* {org_name}\n"
+        f"📁 *Klasör:* {folder}\n"
+        f"🏷️ *Başlık:* {title}\n"
+        f"📑 *Arşiv Kodu:* `{result.get('filename')}`\n\n"
+        f"💡 *Özet:* {result.get('summary', '')}\n\n"
+        f"🔍 Bu bilgi artık RAG hafızasında ve yapay zeka sorgularında hazırdır."
+    )
+
     return {
         "status": "success",
         "message": "WhatsApp notu başarıyla işlendi ve portföye kaydedildi.",
+        "reply_text": reply_text,
         "data": result,
     }
+
+
