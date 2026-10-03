@@ -16,3 +16,8 @@ from services.chat_service import (
     do_execute_chat_action,
     generate_rag_chat_response,
 )
+from services.whatsapp_service import (
+    process_whatsapp_text_note,
+    transcribe_audio_file,
+)
+

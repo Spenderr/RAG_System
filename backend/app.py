@@ -18,6 +18,7 @@ from routes import (
     documents_router,
     chat_router,
     stats_router,
+    whatsapp_router,
 )
 
 
@@ -55,6 +56,7 @@ app.include_router(organizations_router)
 app.include_router(documents_router)
 app.include_router(chat_router)
 app.include_router(stats_router)
+app.include_router(whatsapp_router)
 
 
 if __name__ == "__main__":
