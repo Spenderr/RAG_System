@@ -9,7 +9,6 @@ from typing import Dict, Any, Optional, Tuple
 
 from openai import AsyncOpenAI
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
 
 from config import UPLOAD_DIR, OPENAI_API_KEY
 from database import (
@@ -18,10 +17,8 @@ from database import (
     get_vector_store,
     save_organizations,
 )
-from services.ocr_service import extract_text_from_image
 from services.text_service import chunk_by_sections_or_paragraphs
 from services.org_service import ai_detect_organization
-
 
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -40,7 +37,6 @@ async def process_whatsapp_text_note(
     """
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
-    # 1. Structure the note with AI
     structure_prompt = (
         "Sen profesyonel bir gayrimenkul / emlak asistanısın. Danışmandan gelen ham WhatsApp mesajını analiz et.\n"
         "Mesaj:\n"
@@ -76,13 +72,12 @@ async def process_whatsapp_text_note(
         if data.get("suggested_folder"):
             suggested_folder = data["suggested_folder"]
     except Exception as e:
-        print(f"[whatsapp_service] AI format error: {e}")
+        print(f"[whatsapp_service] AI format warning: {e}")
 
-    # 2. Generate clean filename
     clean_title = re.sub(r'[^a-zA-Z0-9_\-çğıöşüÇĞİÖŞÜ\s]', '', title).strip().replace(' ', '_')
     if not clean_title:
         clean_title = f"wa_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
+
     filename = f"WA_{clean_title}.txt"
     counter = 1
     file_path = UPLOAD_DIR / filename
@@ -91,7 +86,6 @@ async def process_whatsapp_text_note(
         file_path = UPLOAD_DIR / filename
         counter += 1
 
-    # Add metadata footer to document
     full_doc_content = (
         f"{formatted_content}\n\n"
         f"---\n"
@@ -103,10 +97,9 @@ async def process_whatsapp_text_note(
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(full_doc_content)
 
-    # 3. Chunk and Embed into Vector Store
     chunks, chunk_details = chunk_by_sections_or_paragraphs([(1, full_doc_content)])
     vs = get_vector_store()
-    
+
     all_metadatas = [
         {
             "source": filename,
@@ -128,12 +121,10 @@ async def process_whatsapp_text_note(
         "file_type": "txt",
     }
 
-    # 4. Auto-detect organization
     ai_org = await ai_detect_organization(filename, full_doc_content)
     org_id = ai_org.get("suggested_org_id") or "__unassigned__"
     org_name = ai_org.get("suggested_org_name") or "Genel"
 
-    # Add folder to organization if not present
     if org_id in organizations_db["organizations"]:
         org = organizations_db["organizations"][org_id]
         if "folders" not in org:
@@ -163,7 +154,7 @@ async def process_whatsapp_text_note(
 
 
 async def transcribe_audio_file(audio_path: Path) -> str:
-    """Transcribes an audio file (e.g. WhatsApp voice note / ogg / mp3 / m4a) using Whisper API."""
+    """Transcribes an audio file (e.g. WhatsApp voice note) using Whisper API."""
     if not openai_client:
         raise ValueError("OpenAI client is not configured")
 

@@ -5,14 +5,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Request, Response, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Request, Response, HTTPException, Query
 from pydantic import BaseModel
 
 from config import UPLOAD_DIR
 from services.whatsapp_service import process_whatsapp_text_note, transcribe_audio_file
-from services.ocr_service import extract_text_from_image
-from services.text_service import chunk_by_sections_or_paragraphs
-from services.org_service import ai_detect_organization
 from database import (
     organizations_db,
     processed_documents,
@@ -40,7 +37,6 @@ async def verify_whatsapp_webhook(
     if mode == "subscribe" and token == expected_token:
         return Response(content=challenge, media_type="text/plain")
 
-    # If simple probe
     return {"status": "active", "service": "MainChunk WhatsApp Webhook"}
 
 
