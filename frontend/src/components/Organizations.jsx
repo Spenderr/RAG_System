@@ -1565,7 +1565,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-600 truncate">
-                    {dragOverOrgId === unassignedOrg.id ? 'Genel / Klasörsüzlere Taşı' : (unassignedOrg.name || 'Genel / Klasörsüzler')}
+                    {dragOverOrgId === unassignedOrg.id ? 'Kurumsuz Havuza Taşı' : (unassignedOrg.name || 'Kurumsuz Belgeler')}
                   </p>
                   <p className="text-[10px] text-slate-400 font-mono">{unassignedOrg.document_count} doküman</p>
                 </div>
@@ -1827,7 +1827,8 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                         : 'bg-white text-slate-500 border border-dashed border-slate-200 hover:bg-slate-50'
                     }`}
                   >
-                    Genel / Klasörsüz ({currentDocs.filter(d => !d.folder).length})
+                    <Folder className={`w-3 h-3 ${selectedFolderFilter === '__unfolded__' || dragOverFolder === '__unfolded__' ? 'text-white' : 'text-slate-400'}`} />
+                    <span>Klasörsüz ({currentDocs.filter(d => !d.folder).length})</span>
                   </button>
                 )}
 

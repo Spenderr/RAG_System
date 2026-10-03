@@ -75,11 +75,11 @@ def save_organizations():
 
 
 def ensure_unknown_org():
-    """Ensure the system 'Genel / Klasörsüzler' organization always exists."""
+    """Ensure the system 'Kurumsuz Belgeler (Genel Havuz)' organization always exists."""
     if "__unassigned__" not in organizations_db["organizations"]:
         organizations_db["organizations"]["__unassigned__"] = {
-            "name": "Genel / Klasörsüzler",
-            "description": "Henüz bir portföye atanmamış genel belgeler ve notlar",
+            "name": "Kurumsuz Belgeler (Genel Havuz)",
+            "description": "Henüz bir kuruma/portföye atanmamış genel belgeler",
             "color": "#6b7280",
             "tags": [],
             "created_at": datetime.now().isoformat(),
@@ -87,11 +87,10 @@ def ensure_unknown_org():
         }
         save_organizations()
     else:
-        # Migrate old 'Unassigned' or 'Atanmamış' label to 'Genel / Klasörsüzler'
         curr_name = organizations_db["organizations"]["__unassigned__"].get("name", "")
-        if curr_name in ["Unassigned", "Atanmamış", ""]:
-            organizations_db["organizations"]["__unassigned__"]["name"] = "Genel / Klasörsüzler"
-            organizations_db["organizations"]["__unassigned__"]["description"] = "Henüz bir portföye atanmamış genel belgeler ve notlar"
+        if curr_name in ["Unassigned", "Atanmamış", "Genel / Klasörsüzler", ""]:
+            organizations_db["organizations"]["__unassigned__"]["name"] = "Kurumsuz Belgeler (Genel Havuz)"
+            organizations_db["organizations"]["__unassigned__"]["description"] = "Henüz bir kuruma/portföye atanmamış genel belgeler"
             save_organizations()
 
 
