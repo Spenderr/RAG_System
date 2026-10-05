@@ -5,7 +5,8 @@ import {
   FolderPlus, Folder, Layers, HelpCircle, RefreshCw,
   ChevronRight, ChevronLeft, ArrowRight, ArrowLeft, Tag, MoreHorizontal, Sparkles,
   ZoomIn, ZoomOut, Download, MessageSquare, Copy, StickyNote,
-  Send, Share2, Sparkle, CheckSquare, Square, RotateCcw, Maximize2, Minimize2, ExternalLink
+  Send, Share2, Sparkle, CheckSquare, Square, RotateCcw, Maximize2, Minimize2, ExternalLink,
+  Users, User
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -840,7 +841,7 @@ const ExplorerGrid = ({
 // ─────────────────────────────────────────────────────────────────
 // Main Organizations Component
 // ─────────────────────────────────────────────────────────────────
-const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearInitialOrgId, onClearInitialDocName, activeView }) => {
+const Organizations = ({ initialDocName, initialOrgId, initialScope = 'all', openNoteOnMount, onClearInitialOrgId, onClearInitialDocName, activeView }) => {
   const { language, t } = useLanguage();
   const isTr = language === 'tr';
   const [organizations, setOrganizations] = useState([]);
@@ -850,8 +851,20 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
   const [loadingDocs, setLoadingDocs] = useState(null);
   const [search, setSearch] = useState('');
   const [docSearch, setDocSearch] = useState('');
+  const [scopeFilter, setScopeFilter] = useState(initialScope || (activeView === 'personal_portfolios' ? 'personal' : (activeView === 'team_portfolios' ? 'team' : 'all')));
   const [selectedFolderFilter, setSelectedFolderFilter] = useState('all');
   const [previewDoc, setPreviewDoc] = useState(null);
+
+  // Sync scope filter when activeView or initialScope changes
+  useEffect(() => {
+    if (activeView === 'personal_portfolios') {
+      setScopeFilter('personal');
+    } else if (activeView === 'team_portfolios') {
+      setScopeFilter('team');
+    } else if (initialScope && initialScope !== 'all') {
+      setScopeFilter(initialScope);
+    }
+  }, [activeView, initialScope]);
 
   // Navigation History State (Finder / Explorer style Back & Forward)
   const [navState, setNavState] = useState({ history: [], index: -1 });
@@ -949,6 +962,7 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgDesc, setNewOrgDesc] = useState('');
   const [newOrgColor, setNewOrgColor] = useState('#6366f1');
+  const [newOrgScope, setNewOrgScope] = useState('team');
   const [newOrgTags, setNewOrgTags] = useState('');
   const [newOrgFolders, setNewOrgFolders] = useState('');
   const [creating, setCreating] = useState(false);
@@ -1364,6 +1378,7 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
           name: newOrgName.trim(),
           description: newOrgDesc.trim(),
           color: newOrgColor,
+          scope: newOrgScope,
           tags: newOrgTags.split(',').map(t => t.trim()).filter(Boolean),
           folders: newOrgFolders.split(',').map(f => f.trim()).filter(Boolean),
         }),
@@ -1372,7 +1387,7 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
         const newOrg = await res.json();
         setShowCreateModal(false);
         setNewOrgName(''); setNewOrgDesc(''); setNewOrgColor('#6366f1');
-        setNewOrgTags(''); setNewOrgFolders('');
+        setNewOrgTags(''); setNewOrgFolders(''); setNewOrgScope('team');
         await fetchOrganizations();
         setSelectedOrgId(newOrg.id);
         window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
@@ -1626,7 +1641,16 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewDoc, hasPrevDoc, hasNextDoc, docIndex, effectiveDocList, canGoBack, canGoForward, navState]);
 
-  const userOrgs = organizations.filter(o => !o.is_system && o.name.toLowerCase().includes(search.toLowerCase()));
+  const teamCount = organizations.filter(o => !o.is_system && (o.scope || 'team') === 'team').length;
+  const personalCount = organizations.filter(o => !o.is_system && o.scope === 'personal').length;
+
+  const userOrgs = organizations.filter(o => {
+    if (o.is_system) return false;
+    if (search && !o.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (scopeFilter === 'team') return (o.scope || 'team') === 'team';
+    if (scopeFilter === 'personal') return o.scope === 'personal';
+    return true;
+  });
   const unassignedOrg = organizations.find(o => o.is_system);
 
   return (
@@ -1637,9 +1661,15 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
       ══════════════════════════════════════════════ */}
       <div className="w-64 shrink-0 flex flex-col bg-white border-r border-slate-200 overflow-hidden">
         {/* Left header */}
-        <div className="px-4 pt-5 pb-3 border-b border-slate-100 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-slate-900">{isTr ? 'Kurumlar & Portföyler' : 'Portfolios & Clients'}</h2>
+        <div className="px-3.5 pt-4 pb-3 border-b border-slate-100 shrink-0 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900">
+              {scopeFilter === 'team'
+                ? (isTr ? 'Ekip Portföyleri' : 'Team Portfolios')
+                : scopeFilter === 'personal'
+                ? (isTr ? 'Kişisel Portföyler' : 'Personal Portfolios')
+                : (isTr ? 'Tüm Portföyler' : 'Portfolios & Workspaces')}
+            </h2>
             <div className="flex items-center gap-1">
               <button
                 onClick={fetchOrganizations}
@@ -1649,7 +1679,10 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-500' : ''}`} />
               </button>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setNewOrgScope(scopeFilter === 'personal' ? 'personal' : 'team');
+                  setShowCreateModal(true);
+                }}
                 className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs shadow-indigo-600/20 cursor-pointer"
                 title={isTr ? "Yeni Portföy" : "New Portfolio"}
               >
@@ -1657,6 +1690,45 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
               </button>
             </div>
           </div>
+
+          {/* Scope Segment Tabs */}
+          <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+            <button
+              onClick={() => setScopeFilter('all')}
+              className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg transition-all cursor-pointer ${
+                scopeFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span>{isTr ? 'Tümü' : 'All'}</span>
+            </button>
+            <button
+              onClick={() => setScopeFilter('team')}
+              className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg transition-all cursor-pointer ${
+                scopeFilter === 'team'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title={isTr ? "Ekip portföyleri" : "Team portfolios"}
+            >
+              <Users className="w-3 h-3 shrink-0" />
+              <span>{isTr ? 'Ekip' : 'Team'}</span>
+            </button>
+            <button
+              onClick={() => setScopeFilter('personal')}
+              className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg transition-all cursor-pointer ${
+                scopeFilter === 'personal'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title={isTr ? "Kişisel portföyler" : "Personal portfolios"}
+            >
+              <User className="w-3 h-3 shrink-0" />
+              <span>{isTr ? 'Kişisel' : 'Personal'}</span>
+            </button>
+          </div>
+
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -1710,12 +1782,15 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
               {userOrgs.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 px-4 py-8 text-slate-400">
                   <Building2 className="w-8 h-8 text-slate-300" />
-                  <p className="text-xs text-center">{isTr ? 'Henüz kurum yok' : 'No portfolios yet'}</p>
+                  <p className="text-xs text-center">{isTr ? 'Henüz portföy yok' : 'No portfolios found'}</p>
                   <button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => {
+                      setNewOrgScope(scopeFilter === 'personal' ? 'personal' : 'team');
+                      setShowCreateModal(true);
+                    }}
                     className="text-xs text-indigo-600 font-semibold hover:underline"
                   >
-                    + {isTr ? 'Kurum oluştur' : 'Create Portfolio'}
+                    + {scopeFilter === 'personal' ? (isTr ? 'Kişisel Portföy Oluştur' : 'Create Personal Portfolio') : (isTr ? 'Ekip Portföyü Oluştur' : 'Create Team Portfolio')}
                   </button>
                 </div>
               ) : (
@@ -1723,6 +1798,7 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
                   {userOrgs.map(org => {
                     const isSelected = selectedOrgId === org.id;
                     const isOrgDropTarget = dragOverOrgId === org.id;
+                    const isPersonal = org.scope === 'personal';
                     return (
                       <div key={org.id} className="group relative">
                         <button
@@ -1755,12 +1831,27 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
                             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
                             style={{ backgroundColor: isOrgDropTarget ? '#10b98130' : `${org.color}18` }}
                           >
-                            <Building2 className="w-4 h-4" style={{ color: isOrgDropTarget ? '#059669' : org.color }} />
+                            {isPersonal ? (
+                              <User className="w-4 h-4" style={{ color: isOrgDropTarget ? '#059669' : org.color }} />
+                            ) : (
+                              <Users className="w-4 h-4" style={{ color: isOrgDropTarget ? '#059669' : org.color }} />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-xs font-bold truncate ${isOrgDropTarget ? 'text-emerald-800' : isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>
-                              {isOrgDropTarget ? (isTr ? 'Buraya Taşı' : 'Move Here') : org.name}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p className={`text-xs font-bold truncate ${isOrgDropTarget ? 'text-emerald-800' : isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>
+                                {isOrgDropTarget ? (isTr ? 'Buraya Taşı' : 'Move Here') : org.name}
+                              </p>
+                              {scopeFilter === 'all' && (
+                                <span className={`text-[9px] font-bold px-1 py-0.2 rounded shrink-0 ${
+                                  isPersonal
+                                    ? 'bg-purple-50 text-purple-600 border border-purple-200/60'
+                                    : 'bg-blue-50 text-blue-600 border border-blue-200/60'
+                                }`}>
+                                  {isPersonal ? (isTr ? 'Kişisel' : 'Ekip') : (isTr ? 'Ekip' : 'Team')}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[10px] text-slate-400 font-mono">{org.document_count} {isTr ? 'dok.' : 'docs'}</p>
                           </div>
                           {isSelected && !isOrgDropTarget && <ChevronRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
@@ -2403,6 +2494,50 @@ const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearI
                   placeholder={isTr ? 'örn. Portföy A, Sözleşmeler, Fotoğraflar (virgülle ayırın)' : 'e.g. Folder A, Contracts, Photos (comma separated)'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
                 />
+              </div>
+
+              {/* Portfolio Scope / Type */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                  {isTr ? 'Portföy Kapsamı' : 'Portfolio Scope'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewOrgScope('team')}
+                    className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      newOrgScope === 'team'
+                        ? 'border-indigo-500 bg-indigo-50/90 ring-1 ring-indigo-500 shadow-2xs'
+                        : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-xl shrink-0 ${newOrgScope === 'team' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">{isTr ? 'Ekip / Ortak' : 'Team / Shared'}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{isTr ? 'Tüm ekip erişebilir' : 'Accessible by whole team'}</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewOrgScope('personal')}
+                    className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      newOrgScope === 'personal'
+                        ? 'border-indigo-500 bg-indigo-50/90 ring-1 ring-indigo-500 shadow-2xs'
+                        : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-xl shrink-0 ${newOrgScope === 'personal' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">{isTr ? 'Kişisel / Özel' : 'Personal / Private'}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{isTr ? 'Sadece size özel' : 'Private to your profile'}</p>
+                    </div>
+                  </button>
+                </div>
               </div>
 
               <div>

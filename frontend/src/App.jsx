@@ -5,7 +5,7 @@ import Upload from './components/Upload';
 import Organizations from './components/Organizations';
 import Tour from './components/Tour';
 
-const VALID_VIEWS = ['dashboard', 'upload', 'organizations'];
+const VALID_VIEWS = ['dashboard', 'upload', 'organizations', 'team_portfolios', 'personal_portfolios'];
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -36,7 +36,7 @@ function App() {
 
   const handleViewChange = (view) => {
     if (view === 'documents' || view === 'inspector') {
-      setActiveView('organizations');
+      setActiveView('team_portfolios');
       return;
     }
     if (!VALID_VIEWS.includes(view)) {
@@ -49,7 +49,7 @@ function App() {
   const handleSelectOrgFromDashboard = (orgId) => {
     setSelectedOrgId(orgId);
     setSelectedDocName(null);
-    setActiveView('organizations');
+    setActiveView('team_portfolios');
   };
 
   const handleAskAiFromDashboard = (prompt) => {
@@ -65,8 +65,11 @@ function App() {
   const handleViewDocument = (docParam, page) => {
     const docName = typeof docParam === 'object' && docParam !== null ? docParam.docName : docParam;
     setSelectedDocName(docName);
-    setActiveView('organizations');
+    setActiveView('team_portfolios');
   };
+
+  const isOrgsActive = ['organizations', 'team_portfolios', 'personal_portfolios'].includes(currentView);
+  const initialScope = currentView === 'personal_portfolios' ? 'personal' : (currentView === 'team_portfolios' ? 'team' : 'all');
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-800">
@@ -94,13 +97,14 @@ function App() {
             initialMode={uploadMode}
             onNavigateToOrgs={(orgId) => {
               if (orgId && orgId !== '__unassigned__') setSelectedOrgId(orgId);
-              setActiveView('organizations');
+              setActiveView('team_portfolios');
             }}
           />
         </div>
-        <div className={`w-full h-full ${currentView === 'organizations' ? 'block page-transition' : 'hidden'}`}>
+        <div className={`w-full h-full ${isOrgsActive ? 'block page-transition' : 'hidden'}`}>
           <Organizations
             activeView={currentView}
+            initialScope={initialScope}
             initialDocName={selectedDocName}
             initialOrgId={selectedOrgId}
             openNoteOnMount={openNoteOnMount}

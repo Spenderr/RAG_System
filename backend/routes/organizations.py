@@ -65,6 +65,7 @@ async def get_organizations():
             "description": org.get("description", ""),
             "color": org.get("color", "#6366f1"),
             "tags": org.get("tags", []),
+            "scope": org.get("scope", "personal" if "personal" in org.get("tags", []) or "private" in org.get("tags", []) else "team"),
             "folders": sorted(list(folders_set)),
             "document_count": doc_count,
             "created_at": org.get("created_at", ""),
@@ -83,17 +84,20 @@ async def create_organization(body: CreateOrgRequest):
         org_id = f"{base_id}_{counter}"
         counter += 1
 
+    scope_val = body.scope if body.scope in ["team", "personal"] else ("personal" if "personal" in body.tags or "private" in body.tags else "team")
+
     organizations_db["organizations"][org_id] = {
         "name": body.name.strip(),
         "description": body.description.strip(),
         "color": body.color,
         "tags": body.tags,
+        "scope": scope_val,
         "folders": body.folders,
         "created_at": datetime.now().isoformat(),
         "is_system": False,
     }
     save_organizations()
-    return {"id": org_id, "name": body.name.strip(), "status": "created"}
+    return {"id": org_id, "name": body.name.strip(), "scope": scope_val, "status": "created"}
 
 
 @router.put("/{org_id}")
@@ -112,6 +116,8 @@ async def update_organization(org_id: str, body: UpdateOrgRequest):
         org["tags"] = body.tags
     if body.folders is not None:
         org["folders"] = body.folders
+    if body.scope is not None and body.scope in ["team", "personal"]:
+        org["scope"] = body.scope
     save_organizations()
     return {"status": "updated", "id": org_id}
 

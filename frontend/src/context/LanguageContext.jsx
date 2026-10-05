@@ -38,7 +38,9 @@ const translations = {
     // Sidebar
     navDashboard: 'Dashboard',
     navUpload: 'Upload & AI Chat',
-    navOrganizations: 'Organizations & Portfolios',
+    navTeamPortfolios: 'Team Portfolios',
+    navPersonalPortfolios: 'Personal Portfolios',
+    navOrganizations: 'Portfolios & Workspaces',
     navDocuments: 'Documents',
     navInspector: 'Chunk Inspector',
     systemStats: 'System Stats',
@@ -48,6 +50,11 @@ const translations = {
     pipelineTour: 'Pipeline Tour',
     activeStatus: 'Active',
     menu: 'Menu',
+    scopeTeam: 'Team Portfolios',
+    scopePersonal: 'Personal Portfolios',
+    scopeAll: 'All Portfolios',
+    teamScopeBadge: 'Team',
+    personalScopeBadge: 'Personal',
 
     // Dashboard
     dashTitle: 'Document Warehouse & AI Assistant',
@@ -244,7 +251,9 @@ const translations = {
     // Sidebar
     navDashboard: 'Ana Sayfa',
     navUpload: 'Yükle & AI Sohbet',
-    navOrganizations: 'Kurumlar & Portföyler',
+    navTeamPortfolios: 'Ekip Portföyleri',
+    navPersonalPortfolios: 'Kişisel Portföyler',
+    navOrganizations: 'Portföyler & Alanlar',
     navDocuments: 'Belgeler',
     navInspector: 'Parça İnceleyici',
     systemStats: 'Sistem İstatistikleri',
@@ -254,6 +263,11 @@ const translations = {
     pipelineTour: 'Tanıtım Turu',
     activeStatus: 'Aktif',
     menu: 'Menü',
+    scopeTeam: 'Ekip Portföyleri',
+    scopePersonal: 'Kişisel Portföyler',
+    scopeAll: 'Tüm Portföyler',
+    teamScopeBadge: 'Ekip',
+    personalScopeBadge: 'Kişisel',
 
     // Dashboard
     dashTitle: 'Belge Deposu & AI Asistanı',

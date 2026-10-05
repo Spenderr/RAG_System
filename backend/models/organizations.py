@@ -8,6 +8,7 @@ class CreateOrgRequest(BaseModel):
     color: str = "#6366f1"
     tags: List[str] = []
     folders: List[str] = []
+    scope: str = "team"  # "team" or "personal"
 
 
 class UpdateOrgRequest(BaseModel):
@@ -16,6 +17,7 @@ class UpdateOrgRequest(BaseModel):
     color: Optional[str] = None
     tags: Optional[List[str]] = None
     folders: Optional[List[str]] = None
+    scope: Optional[str] = None
 
 
 class FolderCreateRequest(BaseModel):

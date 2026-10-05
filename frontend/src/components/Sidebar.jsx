@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Upload, Database, Zap, Lightbulb, Files, Building2, Layers, LayoutDashboard, Globe } from 'lucide-react';
+import { Upload, Database, Zap, Lightbulb, Files, Building2, Layers, LayoutDashboard, Globe, Users, User } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const Sidebar = ({ activeView, setActiveView, onShowTour }) => {
@@ -31,7 +31,8 @@ const Sidebar = ({ activeView, setActiveView, onShowTour }) => {
   const navItems = [
     { id: 'dashboard', label: t('navDashboard'), icon: LayoutDashboard },
     { id: 'upload', label: t('navUpload'), icon: Upload },
-    { id: 'organizations', label: t('navOrganizations'), icon: Building2 },
+    { id: 'team_portfolios', label: t('navTeamPortfolios'), icon: Users },
+    { id: 'personal_portfolios', label: t('navPersonalPortfolios'), icon: User },
   ];
 
   return (
