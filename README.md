@@ -20,7 +20,6 @@
 
 https://github.com/user-attachments/assets/acef8830-4b03-47d4-8982-b15625b8beed
 
-*(Demo video file located in: `For README/mainchunk_github_demo_16x9.mp4`)*
 
 ---
 

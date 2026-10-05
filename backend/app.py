@@ -50,6 +50,10 @@ app.add_middleware(
 )
 
 
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 # ── Register Modular Routers ──────────────────────────────────────────────────
 
 app.include_router(organizations_router)
@@ -59,6 +63,29 @@ app.include_router(stats_router)
 app.include_router(whatsapp_router)
 
 
+# ── Static Frontend SPA Serving (for Production & Docker) ─────────────────────
+
+DIST_DIR = BACKEND_DIR.parent / "frontend" / "dist"
+
+if DIST_DIR.exists():
+    assets_dir = DIST_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="static_assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+            return None
+        file_path = DIST_DIR / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        index_path = DIST_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        return {"message": "MainChunk API running. Build frontend to access web interface."}
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
