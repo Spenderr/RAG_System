@@ -719,7 +719,7 @@ const Dashboard = ({
               onClick={() => onNavigate?.('organizations')}
               className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
             >
-              <span>View All</span>
+              <span>Explore More</span>
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -743,9 +743,10 @@ const Dashboard = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {userOrgs.map(org => {
+              {userOrgs.slice(0, 3).map(org => {
                 const orgFolders = org.folders || [];
                 const orgDocCount = org.document_count || 0;
+
                 return (
                   <div
                     key={org.id}
