@@ -39,38 +39,45 @@ Traditional storage solutions (like cloud drives or shared folders) are static a
 
 ## Shared Team Knowledge Warehouse & Multi-Portfolio Collaboration
 
-MainChunk transforms fragmented files across different team members into a **centralized, collaborative vector library**. 
+MainChunk transforms fragmented files across individual members and teams into a **centralized, collaborative vector library with granular workspace isolation**. 
 
-Instead of team members keeping files trapped in personal drives or local downloads, **MainChunk acts as the shared brain of your organization**:
+Whether you need a **private personal profile** for individual draft notes or a **collaborative shared team profile** for company-wide contracts, MainChunk acts as the unified intelligence layer for your organization:
 
 ```mermaid
 flowchart LR
-    subgraph Team["Collaborative Team Workspaces"]
-        U1["Team Member A<br/>Residential Deeds & Leases"]
-        U2["Team Member B<br/>Commercial Contracts & Terms"]
-        U3["Team Member C<br/>Architectural Plans & Audio Memos"]
+    subgraph Personal["Personal & Private Profiles"]
+        P1["You<br/>Private Notes & Drafts"]
+        P2["Colleague A<br/>Private Client Portfolios"]
     end
 
-    subgraph Warehouse["MainChunk Centralized Warehouse"]
+    subgraph Shared["Shared Team Profiles & Portfolios"]
+        S1["Team Library<br/>Commercial Deeds & Leases"]
+        S2["Team Library<br/>Standard Contracts & SOPs"]
+    end
+
+    subgraph Warehouse["MainChunk Centralized Vector Engine"]
         AIOrg["Autonomous Ingestion Engine<br/>Auto-Naming · Chunking · Tagging"]
-        VectorDB[("ChromaDB Vector Index<br/>Dense Embeddings & Metadata")]
+        VectorDB[("ChromaDB Vector Index<br/>Dense Embeddings & Profile Scoping")]
         AIOrg --> VectorDB
     end
 
     subgraph Intelligence["Unified Team Retrieval"]
-        Chat["Grounded AI Assistant<br/>Cross-Portfolio Answers & Citations"]
+        Chat["Grounded AI Assistant<br/>Private or Cross-Portfolio Answers & Citations"]
     end
 
-    Team -->|Upload Documents & Notes| AIOrg
+    Personal -->|Private Ingestion| AIOrg
+    Shared -->|Shared Ingestion| AIOrg
     VectorDB --> Intelligence
-    Intelligence -.->|Instant Answers for the Entire Team| Team
+    Intelligence -.->|Scoped Answers to You| Personal
+    Intelligence -.->|Shared Answers to Entire Team| Shared
 ```
 
-### Key Team Collaboration Capabilities:
-- **Collaborative Multi-Portfolio Library:** You upload your client files, property deeds, and folders; your colleagues upload their supplier contracts, lease agreements, and meeting transcripts. MainChunk unifies them into a single, structured digital warehouse.
-- **Cross-Portfolio Global Search & AI Synthesis:** Anyone on your team can query across all portfolios simultaneously without needing to know who uploaded what or which folder it lives in (e.g., *"Compare penalty clauses across all commercial leases uploaded by the team"*).
+### Key Collaboration & Profile Capabilities:
+- **Personal Private Profiles vs. Shared Team Libraries:** Each member can maintain isolated private profiles for sensitive documents, individual draft notes, and confidential client folders, alongside shared team profiles accessible by the entire department.
+- **Collaborative Multi-Portfolio Library:** You upload your property deeds and portfolios; your colleagues upload their supplier contracts, lease agreements, and meeting transcripts. MainChunk unifies shared assets into a single, structured digital warehouse.
+- **Cross-Portfolio Global Search & AI Synthesis:** Query across your own personal records, specific team portfolios, or the entire shared company library simultaneously without needing to know who uploaded what or which folder it lives in (e.g., *"Compare penalty clauses across all commercial leases uploaded by the team"*).
 - **Grounded Source Accountability:** When the AI answers any team inquiry, it provides verifiable clickable source pills linking directly to the specific page and document, ensuring total transparency and zero hallucinations.
-- **Unified Note & Audio Transcription:** Voice memos, quick meeting notes, and OCR image scans uploaded by different team members become immediately searchable across the shared vector space.
+- **Unified Note & Audio Transcription:** Voice memos, quick meeting notes, and OCR image scans uploaded by team members become immediately searchable across the vector space.
 
 ---
 

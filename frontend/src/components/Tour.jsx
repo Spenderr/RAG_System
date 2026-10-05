@@ -93,13 +93,13 @@ const Tour = ({ onClose }) => {
           <div className="space-y-1.5 text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[11px] font-extrabold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Team Knowledge Hub · Live Demo</span>
+              <span>Team & Personal Hub · Live Demo</span>
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
               Collaborative Document Intelligence
             </h2>
             <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
-              Build a shared vector warehouse with your team and query across all portfolios.
+              Personal private workspaces and shared team libraries with grounded AI retrieval.
             </p>
           </div>
 
@@ -119,15 +119,15 @@ const Tour = ({ onClose }) => {
                 </div>
                 <div className="min-w-0">
                   <span className="text-sm font-bold text-slate-900 block truncate">
-                    1. Upload With Your Team
+                    1. Personal & Shared Portfolios
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium block truncate">
-                    You & colleagues add portfolios to a shared library
+                    Keep private files isolated or share library with your team
                   </span>
                 </div>
               </div>
               <span className="text-[10px] font-bold tracking-wide text-blue-700 bg-blue-100/90 px-2.5 py-1 rounded-lg shrink-0">
-                Shared Hub
+                Private & Shared
               </span>
             </div>
 
@@ -171,10 +171,10 @@ const Tour = ({ onClose }) => {
                 </div>
                 <div className="min-w-0">
                   <span className="text-sm font-bold text-slate-900 block truncate">
-                    3. Query Across All Portfolios
+                    3. Cross-Portfolio AI Search
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium block truncate">
-                    Instant answers with grounded source citations
+                    Query personal or shared scope with grounded citations
                   </span>
                 </div>
               </div>
