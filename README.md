@@ -1,4 +1,4 @@
-# ⚡ MainChunk — Autonomous RAG Document Warehouse & Portfolio Intelligence System
+# MainChunk — Autonomous RAG Document Warehouse & Portfolio Intelligence System
 
 <div align="center">
 
@@ -16,15 +16,15 @@
 
 ---
 
-## 🎬 Application Demo Video
+## Application Demo Video
 
-https://github.com/user-attachments/assets/b83ceabf-c4d3-4876-b9cf-ea255e2d6778
+https://github.com/user-attachments/assets/acef8830-4b03-47d4-8982-b15625b8beed
 
 *(Demo video file located in: `For README/mainchunk_github_demo_16x9.mp4`)*
 
 ---
 
-## 🌟 Overview: What is MainChunk?
+## Overview: What is MainChunk?
 
 **MainChunk** is an end-to-end, production-grade **Retrieval-Augmented Generation (RAG)** platform designed to solve the document chaos experienced by modern businesses.
 
@@ -38,90 +38,70 @@ Traditional storage solutions (like cloud drives or shared folders) are static a
 
 ---
 
-## 🎯 Industry Use Cases
+## Industry Use Cases
 
 MainChunk's modular architecture makes it adaptable across diverse industries:
 
 ```mermaid
 mindmap
   root((MainChunk RAG Engine))
-    🏢 Real Estate & Property
+    Real Estate & Property
       Deed & Parcel Verification
       Zoning & Permitting Checks
       Rental & Commercial Leases
       Renovation & Contractor Logs
-    ⚖️ Legal & Corporate Law
+    Legal & Corporate Law
       Contract Clause Discovery
       Payment & LC Terms Analysis
       Liability & Risk Audits
       Dispute Evidence Retrieval
-    👥 HR & Talent Management
+    HR & Talent Management
       CV & Resume Skill Matching
       Certification Verification
       Candidate Experience Search
       Team Allocation Insights
-    📦 Commerce & Supply Chain
+    Commerce & Supply Chain
       Trade Agreement Specifications
       Price Negotiation Memos
       Vendor Compliance Tracking
       Meeting Notes & Transcripts
 ```
 
-### 1. 🏢 Real Estate & Property Management
+### 1. Real Estate & Property Management
 - **Instant Deed & Parcel Verification:** Query parcel numbers, zoning status, and municipal terms directly from scanned deeds or cadastral plans.
 - **Lease & Terms Retrieval:** Instantly cross-examine security deposits, monthly rent, indexation formulas, and termination clauses across dozens of active rental units.
 - **Renovation Logs:** Search contractor engineering logs and architectural agreements for renovation progress, materials, and warranty dates.
 
-### 2. ⚖️ Legal, Contracts & Compliance
+### 2. Legal, Contracts & Compliance
 - **Clause Discovery:** Find specific indemnification, force majeure, or non-compete clauses across multi-party contracts.
 - **Financial & Letter of Credit (LC) Terms:** Identify payment schedules, bank guarantees, and commodity specifications in seconds.
 - **Audit Trails:** Ensure every generated statement has an exact page and chunk citation for legal verification.
 
-### 3. 👥 Human Resources & Talent Intelligence
+### 3. Human Resources & Talent Intelligence
 - **Skillset & Stack Search:** Ask *"Which candidates have verified React and Python certifications?"* or *"Who has experience in building RAG systems?"*
 - **Credential Verification:** Instantly pull up certificate images, diplomas, and accreditation credentials from candidate files.
 - **Role Matching:** Match job requirements against internal resume repositories with high semantic precision.
 
-### 4. 📦 Commerce, Trading & Procurement
+### 4. Commerce, Trading & Procurement
 - **Trade Agreement Specifications:** Retrieve chemical/mineral assay reports, packaging terms, and transport specifications.
 - **Meeting Logs & Voice Transcripts:** Transcribe and index negotiation voice memos and client offer discussions for future reference.
 
 ---
 
-## 🧠 Retrieval-Augmented Generation (RAG) Architecture
+## Retrieval-Augmented Generation (RAG) Architecture
 
 <div align="center">
 
-![MainChunk End-to-End RAG Flowchart](./For%20README/RAG_Flow_Image_pscehgpscehgpsce.jpg)
+<img width="2752" height="1536" alt="MainChunk End-to-End RAG Flowchart" src="https://github.com/user-attachments/assets/d4b904e5-c802-4122-9a56-d3a13ef2eae2" />
 
 </div>
 
-MainChunk implements a robust 3-step, 10-stage end-to-end RAG pipeline that bridges document extraction, vector geometry, and generative synthesis:
-
-```mermaid
-flowchart TD
-    subgraph INGESTION ["1. Ingestion & Extraction Pipeline"]
-        A[01. Multi-Format Ingestion<br/>PDF, Scanned Deeds, Notes] --> B[02. Vision & OCR Processing<br/>Tesseract / GPT-4o Vision]
-        B --> C[03. Autonomous Auto-Organizer<br/>AI File Renaming & Categorization]
-    end
-
-    subgraph CHUNKING_EMBEDDING ["2. Vector Indexing Pipeline"]
-        C --> D[04. Semantic Chunking<br/>Token Splitting & Overlap]
-        D --> E[05. Dense Embedding<br/>OpenAI text-embedding-3-small]
-        E --> F[(06. ChromaDB Vector Database<br/>Local Vector Storage)]
-    end
-
-    subgraph RETRIEVAL_GENERATION ["3. Query, Retrieval & Grounded Answer"]
-        G[07. User Natural Language Query] --> H[08. Cosine Similarity Top-K Retrieval<br/>Fetches Relevant Chunks from ChromaDB]
-        F --> H
-        H --> I[09. Grounded Context Synthesis<br/>GPT-4o + Source Directives]
-        I --> J[10. Verified Answer with Inline Citations<br/>& Instant Full-Screen Viewer]
-    end
-```
+> **Grounded AI Synthesis & Verifiable Citations:**
+> MainChunk enforces strict zero-hallucination prompt engineering. Every synthesized sentence is backed by interactive clickable source pills (e.g., `1_Le_Marais_Furnished_Duplex_Lease.pdf (p.2)`). Clicking any citation opens the exact document in the full-screen viewer, accompanied by a collapsible **Source Documents** drawer with raw chunk text and similarity scores.
 
 ---
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 ### Backend
 | Technology | Role | Description |
@@ -145,92 +125,11 @@ flowchart TD
 
 ---
 
-## ✨ Key Feature Highlights
+## Live Demo
 
-### 📁 1. macOS Finder-Style Portfolio Explorer
-- **Visual Folder Architecture:** Organize documents into custom client portfolios and sub-folders.
-- **Navigation History:** Browser-style Back & Forward navigation (`Alt + Left/Right` shortcuts).
-- **Drag & Drop:** Move files effortlessly between folders.
-- **Batch Actions:** Multi-select files for batch deletion, folder relocation, or bulk download.
-
-### 🔍 2. Instant Full-Screen Document Viewer with Keyboard Browsing
-- Click any document or AI citation to instantly open an edge-to-edge full-screen viewer.
-- **Keyboard Navigation:** Use **`←` Left Arrow** and **`→` Right Arrow** keys to cycle through documents in the folder.
-- Support for **PDFs with embedded toolbars**, **high-res images with zoom controls**, and **editable text notes/memos**.
-
-### 💬 3. Grounded AI Assistant with Exact Citations
-- Strict zero-hallucination prompt engineering requiring exact source attribution.
-- Citations are rendered as interactive pills (e.g. `📄 1_Le_Marais_Furnished_Duplex_Lease.pdf (p.2)`).
-- Collapsible **Source Documents** drawer displaying exact chunk snippets and similarity metrics.
-
-### 📊 4. Property & Asset Variety Analytics
-- Real-time **Property & Portfolio Asset Breakdown** donut chart.
-- Automatically classifies files into distinct real estate varieties:
-  - 🏢 **Apartments & Residences**
-  - 🏞️ **Land & Building Plots**
-  - 🏡 **Villas & Mansions**
-  - 🏬 **Commercial & Retail**
-  - 🏗️ **Development & Projects**
-  - 📜 **Legal Deeds & Contracts**
-
----
-
-## 📁 Repository Structure
-
-```
-├── backend/
-│   ├── app.py                     # FastAPI application entry point & CORS configuration
-│   ├── config.py                  # Project paths, environment variables & allowed file types
-│   ├── database.py                # ChromaDB vector store client & organizations JSON store
-│   ├── models/
-│   │   ├── chat.py                # Pydantic schemas for AI queries & responses
-│   │   ├── documents.py           # Schemas for uploads, notes, batch operations
-│   │   └── organizations.py       # Schemas for portfolios, folders, and tags
-│   ├── routes/
-│   │   ├── chat.py                # Grounded RAG conversational endpoint
-│   │   ├── documents.py           # Ingestion, content retrieval, deletion, batch endpoints
-│   │   ├── organizations.py       # Portfolio CRUD & document assignment endpoints
-│   │   └── stats.py               # Document & vector telemetry endpoint
-│   └── services/
-│       ├── chat_service.py        # Dense similarity search & GPT-4o synthesis logic
-│       ├── org_service.py         # Autonomous AI filename standardizer & auto-organizer
-│       ├── text_service.py        # Semantic chunking & regex text normalization
-│       ├── ocr_service.py         # Image & PDF OCR vision processing
-│       └── whatsapp_service.py    # Audio transcription & mobile memo pipeline
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Dashboard.jsx      # Analytics overview, asset donut chart & quick search
-│   │   │   ├── Organizations.jsx  # macOS Finder-style portfolio explorer & full-screen viewer
-│   │   │   ├── Upload.jsx         # AI Auto-Organize intake pipeline & Grounded AI Assistant
-│   │   │   ├── Sidebar.jsx        # Navigation sidebar & active state management
-│   │   │   └── Tour.jsx           # Interactive introductory platform walkthrough
-│   │   ├── context/
-│   │   │   └── LanguageContext.jsx# Application localization & dictionary definitions
-│   │   ├── App.jsx                # Root view router & cross-view state coordinator
-│   │   ├── main.jsx               # React DOM bootstrap
-│   │   └── index.css              # Custom styling & scrollbar animations
-│   ├── package.json               # Frontend dependencies & build scripts
-│   └── vite.config.js             # Vite development proxy & bundler settings
-│
-├── uploads/                       # Persistent local storage for raw ingested files
-├── db/                            # Persistent ChromaDB vector collections & organizations.json
-├── For README/                    # Media & visual assets for GitHub documentation
-│   ├── mainchunk_github_demo_16x9.mp4      # Full walkthrough demonstration video
-│   └── RAG_Flow_Image_pscehgpscehgpsce.jpg # 10-stage end-to-end RAG architecture diagram
-├── requirements.txt               # Backend Python dependencies
-└── .env.example                   # Sample environment configuration template
-```
-
----
-
-## 🌐 Live Demo
-
-> 🚀 **Live Demo URL:** `[Coming Soon / Live Link Deployment]`
+> **Live Demo URL:** `[Coming Soon / Live Link Deployment]`
 >
 > MainChunk is designed to run seamlessly in modern cloud container environments. Test queries, browse sample property portfolios, and experiment with grounded RAG retrieval in real-time.
 
 ---
-
 
