@@ -12,6 +12,13 @@
 
 **Transform chaotic documents, messy image scans, and unstructured notes into an autonomous, collaborative vector warehouse for you and your team with grounded AI conversational intelligence.**
 
+<br/>
+
+[![Live Production Demo](https://img.shields.io/badge/Live_Production_Demo-Explore_MainChunk-emerald?style=for-the-badge&logo=google-chrome&logoColor=white)](https://ragsystem-production-6839.up.railway.app)
+
+> **Live Deployment:** [https://ragsystem-production-6839.up.railway.app](https://ragsystem-production-6839.up.railway.app)  
+> Test autonomous multi-portfolio intake, team vs. personal workspace separation, and grounded AI retrieval with page citations in real-time.
+
 </div>
 
 ---
@@ -37,11 +44,13 @@ Traditional storage solutions (like cloud drives or shared folders) are static a
 
 ---
 
-## Shared Team Knowledge Warehouse & Multi-Portfolio Collaboration
+## Dual Workspaces: Team Knowledge Warehouse & Personal Private Space
 
-MainChunk transforms fragmented files across individual members and teams into a **centralized, collaborative vector library with granular workspace isolation**. 
+MainChunk transforms fragmented files across individual members and teams into a **centralized, collaborative vector library with granular workspace isolation**:
 
-Whether you need a **private personal profile** for individual draft notes or a **collaborative shared team profile** for company-wide contracts, MainChunk acts as the unified intelligence layer for your organization:
+- **Team Portfolios (Orange Theme):** A shared, collaborative digital warehouse where colleagues upload client portfolios, supplier agreements, and company-wide procedures. Anyone on the team can query across all team portfolios simultaneously.
+- **Personal Portfolios (Indigo Theme):** A private, isolated space for individual draft notes, confidential client folders, and personal records that stay separate from the team library.
+- **Scoped Cross-Portfolio AI Search:** Query either your personal private workspace, specific team portfolios, or the entire company archive with verifiable source citations.
 
 ```mermaid
 flowchart LR
