@@ -7,6 +7,8 @@ import {
   BarChart3, Info, FileCode, HelpCircle, Trees, Home, Hammer, Award
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import DashboardChat from './DashboardChat';
+import DashboardIngest from './DashboardIngest';
 
 const Dashboard = ({
   activeView,
@@ -23,7 +25,6 @@ const Dashboard = ({
   const [organizations, setOrganizations] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchPrompt, setSearchPrompt] = useState('');
   const [hoveredSegment, setHoveredSegment] = useState(null);
 
   const fetchData = async () => {
@@ -398,12 +399,6 @@ const Dashboard = ({
     }).sort((a, b) => b.count - a.count);
   }, [userOrgs, documents, language]);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (!searchPrompt.trim()) return;
-    onAskAi?.(searchPrompt.trim());
-  };
-
   // SVG Donut geometry calculations
   const donutRadius = 52;
   const circumference = 2 * Math.PI * donutRadius;
@@ -427,75 +422,35 @@ const Dashboard = ({
       <div className="max-w-7xl mx-auto space-y-7">
 
         {/* ─────────────────────────────────────────────────────────────
-            1. HERO / COMMAND CENTER HEADER
+            1. CLEAN COMPACT HEADER
         ───────────────────────────────────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-7 lg:p-9 shadow-xl border border-slate-800">
-          <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold mb-2 backdrop-blur-sm">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>Autonomous RAG Engine</span>
-                </div>
-                <h1 className="text-2xl lg:text-3xl font-black text-white tracking-tight">
-                  Document Warehouse & Intelligence
-                </h1>
-                <p className="text-xs lg:text-sm text-slate-300 mt-1 max-w-lg font-medium">
-                  Search, classify, and query all your files and notes with grounded AI.
-                </p>
-              </div>
-
-              {/* Quick Actions in Hero */}
-              <div className="flex items-center gap-2 flex-wrap shrink-0">
-                <button
-                  onClick={() => onNavigate?.('upload')}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 active:scale-95 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Upload Files</span>
-                </button>
-                <button
-                  onClick={() => onOpenNoteModal?.()}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Add Note</span>
-                </button>
-                <button
-                  onClick={() => onNavigate?.('organizations')}
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-sm border border-white/15 transition-all cursor-pointer"
-                >
-                  <Building2 className="w-4 h-4" />
-                  <span>Explorer</span>
-                </button>
-              </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight">
+                Document Warehouse & Intelligence
+              </h1>
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-[10px] font-bold text-emerald-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live RAG Engine
+              </span>
             </div>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+              Autonomous vector knowledge warehouse & conversational intelligence
+            </p>
+          </div>
 
-            {/* Global AI Query Search Bar */}
-            <form onSubmit={handleSearchSubmit} className="relative mt-2">
-              <div className="relative flex items-center">
-                <Search className="w-5 h-5 absolute left-4 text-indigo-300 pointer-events-none" />
-                <input
-                  value={searchPrompt}
-                  onChange={(e) => setSearchPrompt(e.target.value)}
-                  placeholder="Ask anything across your documents... (e.g. Paris deed terms, rental price, candidate skills)"
-                  className="w-full bg-white/10 hover:bg-white/[0.14] focus:bg-white/15 border border-white/20 focus:border-indigo-400 rounded-2xl py-3.5 pl-12 pr-28 text-xs lg:text-sm text-white placeholder:text-slate-400 focus:outline-none transition-all shadow-inner backdrop-blur-md"
-                />
-                <button
-                  type="submit"
-                  disabled={!searchPrompt.trim()}
-                  className="absolute right-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Ask AI</span>
-                </button>
-              </div>
-            </form>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate?.('organizations')}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-98"
+            >
+              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Portfolio Explorer</span>
+            </button>
           </div>
         </div>
+
 
         {/* ─────────────────────────────────────────────────────────────
             2. KPI STATS CARDS (PORTFOLIOS, FOLDERS, DOCUMENT ARCHIVE)
@@ -663,7 +618,26 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            3. CLEAN & IMPACTFUL CHARTS
+            3. AI CHAT & DIRECT INGESTION HUB
+        ───────────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left: Large AI Chat Screen */}
+          <div className="lg:col-span-8">
+            <DashboardChat onViewDocument={onViewDocument} />
+          </div>
+
+          {/* Right: Direct File Dropzone & Quick Note Ingestion */}
+          <div className="lg:col-span-4">
+            <DashboardIngest
+              userOrgs={userOrgs}
+              onIngestionComplete={fetchData}
+              onViewDocument={onViewDocument}
+            />
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────
+            4. CLEAN & IMPACTFUL CHARTS
         ───────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           
@@ -1072,132 +1046,87 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            6. RECENT DOCUMENTS & QUICK NOTE INTAKE
+            6. RECENT DOCUMENTS & RECORDS
         ───────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Left: Recent Documents Table (2 columns wide) */}
-          <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-500" />
-                <h2 className="text-sm font-bold text-slate-900">Recent Documents & Records</h2>
-              </div>
-              <button
-                onClick={() => onNavigate?.('organizations')}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
-              >
-                <span>View All</span>
-                <ChevronRight className="w-3 h-3" />
-              </button>
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-500" />
+              <h2 className="text-sm font-bold text-slate-900">Recent Documents & Records</h2>
             </div>
+            <button
+              onClick={() => onNavigate?.('organizations')}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+            >
+              <span>View All</span>
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
 
-            {documents.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-xs">
-                No documents uploaded yet
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {documents.slice(0, 6).map((doc) => {
-                  const isPdf = doc.name?.toLowerCase().endsWith('.pdf');
-                  const isImg = /\.(png|jpg|jpeg|webp|bmp|gif)$/i.test(doc.name);
-                  const isNote = doc.doc_type === 'note' || doc.name?.toLowerCase().includes('note') || doc.name?.toLowerCase().startsWith('wa_');
+          {documents.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-xs">
+              No documents uploaded yet
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {documents.slice(0, 8).map((doc) => {
+                const isPdf = doc.name?.toLowerCase().endsWith('.pdf');
+                const isImg = /\.(png|jpg|jpeg|webp|bmp|gif)$/i.test(doc.name);
+                const isNote = doc.doc_type === 'note' || doc.name?.toLowerCase().includes('note') || doc.name?.toLowerCase().startsWith('wa_');
 
-                  return (
-                    <div
-                      key={doc.name}
-                      onClick={() => onViewDocument ? onViewDocument(doc.name) : onNavigate?.('organizations')}
-                      className="group flex items-center justify-between py-3 hover:bg-slate-50/80 px-2 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                          isNote
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : isImg
-                            ? 'bg-amber-50 text-amber-600'
-                            : isPdf
-                            ? 'bg-red-50 text-red-600'
-                            : 'bg-indigo-50 text-indigo-600'
-                        }`}>
-                          {isNote ? <FileText className="w-4 h-4" /> : isImg ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors" title={doc.name}>
-                            {doc.name}
-                          </p>
-                          <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
-                            {doc.org_name && (
-                              <span className="font-semibold text-slate-600 truncate max-w-[120px]">
-                                {doc.org_name}
-                              </span>
-                            )}
-                            {doc.folder && (
-                              <>
-                                <span>·</span>
-                                <span className="text-indigo-600 font-semibold truncate max-w-[120px]">
-                                  📁 {doc.folder}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
+                return (
+                  <div
+                    key={doc.name}
+                    onClick={() => onViewDocument ? onViewDocument(doc.name) : onNavigate?.('organizations')}
+                    className="group flex items-center justify-between p-2.5 hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-2xl transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                        isNote
+                          ? 'bg-emerald-50 text-emerald-600'
+                          : isImg
+                          ? 'bg-amber-50 text-amber-600'
+                          : isPdf
+                          ? 'bg-red-50 text-red-600'
+                          : 'bg-indigo-50 text-indigo-600'
+                      }`}>
+                        {isNote ? <FileText className="w-4 h-4" /> : isImg ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
                       </div>
-
-                      <div className="flex items-center gap-3 shrink-0 ml-3">
-                        <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                          {doc.chunk_count || 0} chunks
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors" title={doc.name}>
+                          {doc.name}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                          {doc.org_name && (
+                            <span className="font-semibold text-slate-600 truncate max-w-[120px]">
+                              {doc.org_name}
+                            </span>
+                          )}
+                          {doc.folder && (
+                            <>
+                              <span>·</span>
+                              <span className="text-indigo-600 font-semibold truncate max-w-[120px]">
+                                📁 {doc.folder}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
-          {/* Right: Quick Note & Text Intake Card */}
-          <div className="space-y-4">
-            <div className="rounded-3xl p-6 bg-gradient-to-br from-emerald-600 to-teal-800 text-white shadow-md flex flex-col justify-between">
-              <div>
-                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center mb-3 backdrop-blur-xs">
-                  <FileText className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-sm font-bold">Quick Note & Memo</h3>
-                <p className="text-xs text-emerald-100 mt-1 leading-relaxed">
-                  Add quick notes directly to AI vector storage.
-                </p>
-              </div>
-
-              <div className="mt-5 space-y-2">
-                <button
-                  onClick={() => onOpenNoteModal?.()}
-                  className="w-full py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-98 flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Note</span>
-                </button>
-                <button
-                  onClick={() => onNavigate?.('upload')}
-                  className="w-full py-2 bg-emerald-700/60 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1"
-                >
-                  <span>Go to Upload</span>
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                        {doc.chunk_count || 0} chunks
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-
-            {/* Warehouse Quick Summary Chip */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs">
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                <h4 className="text-xs font-bold text-slate-900">Vector Engine</h4>
-              </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                ChromaDB vector store and OpenAI embeddings active.
-              </p>
-            </div>
-          </div>
+          )}
         </div>
+
 
       </div>
     </div>
