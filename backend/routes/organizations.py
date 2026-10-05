@@ -49,10 +49,16 @@ async def get_organizations():
             if assignment.get("org_id") == org_id and assignment.get("folder"):
                 folders_set.add(assignment["folder"])
 
-        doc_count = sum(
-            1 for assignment in organizations_db["document_assignments"].values()
-            if assignment.get("org_id") == org_id
-        )
+        if org_id == "__unassigned__":
+            doc_count = sum(
+                1 for assignment in organizations_db["document_assignments"].values()
+                if assignment.get("org_id") == "__unassigned__" or not assignment.get("folder")
+            )
+        else:
+            doc_count = sum(
+                1 for assignment in organizations_db["document_assignments"].values()
+                if assignment.get("org_id") == org_id
+            )
         result.append({
             "id": org_id,
             "name": org["name"],
@@ -163,8 +169,19 @@ async def get_org_documents(org_id: str):
 
     docs = []
     for filename, assignment in organizations_db["document_assignments"].items():
-        if assignment.get("org_id") == org_id:
+        is_match = False
+        if org_id == "__unassigned__":
+            # Matches any document that has no folder assigned OR is explicitly in __unassigned__
+            if assignment.get("org_id") == "__unassigned__" or not assignment.get("folder"):
+                is_match = True
+        else:
+            if assignment.get("org_id") == org_id:
+                is_match = True
+
+        if is_match:
             doc_info = processed_documents.get(filename, {})
+            parent_org_id = assignment.get("org_id", "__unassigned__")
+            parent_org = organizations_db["organizations"].get(parent_org_id, {})
             docs.append({
                 "name": filename,
                 "chunk_count": doc_info.get("chunk_count", 0),
@@ -175,5 +192,8 @@ async def get_org_documents(org_id: str):
                 "doc_type": assignment.get("doc_type", "other"),
                 "assigned_at": assignment.get("assigned_at", ""),
                 "auto_detected": assignment.get("auto_detected", False),
+                "org_id": parent_org_id,
+                "org_name": parent_org.get("name", ""),
+                "org_color": parent_org.get("color", "#6366f1"),
             })
     return docs

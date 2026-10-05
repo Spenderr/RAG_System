@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Upload as UploadIcon, File, CheckCircle2, Loader2,
   ArrowRight, X, Send, Trash2, ChevronDown, ChevronRight, BookOpen,
@@ -8,21 +8,24 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
-// ── Pipeline step definitions ─────────────────────────────────
-const STEPS = [
-  { id: 'upload', title: 'Upload', desc: 'File received' },
-  { id: 'queue', title: 'Queue', desc: 'Waiting for processor' },
-  { id: 'clean', title: 'Clean & Partition', desc: 'Extracting text & OCR' },
-  { id: 'chunk', title: 'Chunk', desc: 'Semantic splitting' },
-  { id: 'embed', title: 'Embed & Store', desc: 'Vectorizing' },
-  { id: 'organize', title: 'Organize', desc: 'AI detecting org' },
-];
+import { useLanguage } from '../context/LanguageContext';
 
 const VALID_EXTENSIONS = ['pdf', 'txt', 'png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'];
 
 // ── Upload + Chat Component ───────────────────────────────────
 const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChatPrompt, onClearInitialPrompt, initialMode, onNavigateToOrgs }) => {
+  const { language, t } = useLanguage();
+  const isTr = language === 'tr';
+
+  const STEPS = useMemo(() => [
+    { id: 'upload', title: isTr ? 'Yükleme' : 'Upload', desc: isTr ? 'Dosya alındı' : 'File received' },
+    { id: 'queue', title: isTr ? 'Kuyruk' : 'Queue', desc: isTr ? 'İşlem sırası bekleniyor' : 'Waiting for processor' },
+    { id: 'clean', title: isTr ? 'Temizleme & Ayrıştırma' : 'Clean & Partition', desc: isTr ? 'Metin ve OCR okunuyor' : 'Extracting text & OCR' },
+    { id: 'chunk', title: isTr ? 'Parçalama' : 'Chunk', desc: isTr ? 'Semantik bölümleme' : 'Semantic splitting' },
+    { id: 'embed', title: isTr ? 'Vektörleme & Kayıt' : 'Embed & Store', desc: isTr ? 'Vektör hafızasına ekleniyor' : 'Vectorizing' },
+    { id: 'organize', title: isTr ? 'Kurum Eşleştirme' : 'Organize', desc: isTr ? 'AI kurum eşleştiriyor' : 'AI detecting org' },
+  ], [language, isTr]);
+
   // Ingestion Mode ('files' | 'text')
   const [ingestionMode, setIngestionMode] = useState(initialMode || 'files');
 
@@ -330,6 +333,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
 
         // Step 2: SSE Ingestion Stream
         await new Promise((resolve) => {
+          let isFinished = false;
           const eventSource = new EventSource(`/api/process/${encodeURIComponent(filename)}`);
 
           eventSource.onmessage = (e) => {
@@ -338,6 +342,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
               const mapped = stepMapping[data.step];
 
               if (data.step === 'done' && data.status === 'success') {
+                isFinished = true;
                 const match = data.message?.match(/(\d+)\s*chunks/);
                 const fileChunks = match ? parseInt(match[1]) : 0;
                 cumulativeChunks += fileChunks;
@@ -365,6 +370,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                 eventSource.close();
                 resolve();
               } else if (data.status === 'error') {
+                isFinished = true;
                 progressMap[currentFile.name] = {
                   status: 'error',
                   chunks: 0,
@@ -391,6 +397,8 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
           };
 
           eventSource.onerror = () => {
+            if (isFinished) return;
+            isFinished = true;
             progressMap[currentFile.name] = {
               status: 'error',
               chunks: 0,
@@ -818,9 +826,13 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
         className="shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto p-6 custom-scrollbar shadow-xs"
       >
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Doküman Girişi</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+            {isTr ? 'Doküman Girişi' : 'Document Ingestion'}
+          </h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            PDF, görsel (OCR) veya doğrudan metin notlarını portföy ve vektör hafızasına aktarın
+            {isTr
+              ? 'PDF, görsel (OCR) veya doğrudan metin notlarını portföy ve vektör hafızasına aktarın'
+              : 'Ingest PDF, image scans (OCR) or direct notes into vector memory & portfolios'}
           </p>
         </div>
 
@@ -836,7 +848,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
             }`}
           >
             <UploadIcon className="w-3.5 h-3.5" />
-            <span>Dosya Yükle</span>
+            <span>{isTr ? 'Dosya Yükle' : 'Upload Files'}</span>
           </button>
           <button
             type="button"
@@ -851,7 +863,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>Metin / Not Ekle (.txt)</span>
+            <span>{isTr ? 'Metin / Not Ekle (.txt)' : 'Add Note / Text (.txt)'}</span>
           </button>
         </div>
 
@@ -886,10 +898,10 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
             <UploadIcon className="w-5 h-5" />
           </div>
           <h3 className="text-xs font-bold text-slate-800 mb-1">
-            Drop multiple files here, or click to browse
+            {isTr ? 'Dosyaları buraya sürükleyin veya seçin' : 'Drop multiple files here, or click to browse'}
           </h3>
           <p className="text-[11px] text-slate-400 font-medium">
-            Select multiple PDFs, Images (OCR), or Text files at once
+            {isTr ? 'PDF, Görsel (OCR) veya Metin dosyalarını aynı anda seçebilirsiniz' : 'Select multiple PDFs, Images (OCR), or Text files at once'}
           </p>
         </div>
 
@@ -899,10 +911,10 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-800">
-                  Selected Files ({files.length})
+                  {isTr ? 'Seçilen Dosyalar' : 'Selected Files'} ({files.length})
                 </span>
                 <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {(files.reduce((a, b) => a + b.size, 0) / (1024 * 1024)).toFixed(2)} MB total
+                  {(files.reduce((a, b) => a + b.size, 0) / (1024 * 1024)).toFixed(2)} MB {isTr ? 'toplam' : 'total'}
                 </span>
               </div>
 
@@ -913,13 +925,13 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add More</span>
+                    <span>{isTr ? 'Daha Fazla Ekle' : 'Add More'}</span>
                   </button>
                   <button
                     onClick={handleClearAllFiles}
                     className="text-[11px] font-semibold text-slate-400 hover:text-red-600 transition-colors ml-2"
                   >
-                    Clear All
+                    {isTr ? 'Tümünü Temizle' : 'Clear All'}
                   </button>
                 </div>
               )}
@@ -965,23 +977,23 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                       {isCurrentFile ? (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-bold shadow-2xs">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Processing...</span>
+                          <span>{isTr ? 'İşleniyor...' : 'Processing...'}</span>
                         </div>
                       ) : fileInfo?.status === 'done' ? (
                         <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{fileInfo.chunks} chunks</span>
+                          <span>{fileInfo.chunks} {isTr ? 'parça' : 'chunks'}</span>
                         </div>
                       ) : fileInfo?.status === 'error' ? (
                         <div className="flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-lg" title={fileInfo.error}>
                           <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                          <span>Error</span>
+                          <span>{isTr ? 'Hata' : 'Error'}</span>
                         </div>
                       ) : uploadState === 'idle' ? (
                         <button
                           onClick={() => handleRemoveFile(idx)}
                           className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
-                          title="Remove file"
+                          title={isTr ? "Dosyayı kaldır" : "Remove file"}
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1000,7 +1012,9 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
                 <span>
-                  Process {files.length} Document{files.length > 1 ? 's' : ''} (Ingest & Vectorize)
+                  {isTr
+                    ? `${files.length} Dokümanı İşle (Vektörle & Kaydet)`
+                    : `Process ${files.length} Document${files.length > 1 ? 's' : ''} (Ingest & Vectorize)`}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
@@ -1020,11 +1034,11 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
           <div className="mt-5 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Ingestion Pipeline
+                {isTr ? 'İşleme Hattı' : 'Ingestion Pipeline'}
               </h3>
               {uploadState === 'processing' && (
                 <span className="text-[11px] font-mono text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
-                  File {currentFileIndex + 1} / {files.length}
+                  {isTr ? 'Dosya' : 'File'} {currentFileIndex + 1} / {files.length}
                 </span>
               )}
             </div>
@@ -1071,19 +1085,21 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     </div>
                     <div>
                       <p className="text-emerald-950 font-bold text-xs">
-                        All {files.length} Document{files.length > 1 ? 's' : ''} Vectorized!
+                        {isTr
+                          ? `Tüm ${files.length} Doküman Vektörleştirildi!`
+                          : `All ${files.length} Document${files.length > 1 ? 's' : ''} Vectorized!`}
                       </p>
                       <p className="text-emerald-700 text-[11px] font-mono mt-0.5">
-                        {totalChunksCount} total semantic chunks indexed
+                        {totalChunksCount} {isTr ? 'semantik parça indekslendi' : 'total semantic chunks indexed'}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={resetUpload}
-                    className="text-xs font-bold px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 rounded-xl hover:bg-emerald-100/60 transition-colors shadow-2xs flex items-center gap-1"
+                    className="text-xs font-bold px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 rounded-xl hover:bg-emerald-100/60 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Upload More</span>
+                    <span>{isTr ? 'Daha Fazla Yükle' : 'Upload More'}</span>
                   </button>
                 </div>
 
@@ -1108,17 +1124,17 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                         }`}
                       >
                         {orgDetection?.auto_assigned
-                          ? `Atandı: ${orgDetection.assigned_org_name}`
+                          ? `${isTr ? 'Atandı: ' : 'Assigned: '}${orgDetection.assigned_org_name}`
                           : orgDetection?.suggested_org_name
-                          ? `Öneri: ${orgDetection.suggested_org_name}`
-                          : 'Kurum Yönetimi'}
+                          ? `${isTr ? 'Öneri: ' : 'Suggested: '}${orgDetection.suggested_org_name}`
+                          : (isTr ? 'Kurum Yönetimi' : 'Portfolio Management')}
                       </span>
                     </div>
                     <button
                       onClick={() => handleOpenOrgModal(orgDetection)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 hover:underline"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
                     >
-                      <span>Kurum Seç / Düzenle →</span>
+                      <span>{isTr ? 'Kurum Seç / Düzenle →' : 'Select / Edit Org →'}</span>
                     </button>
                   </div>
                   {orgDetection?.reasoning && (
@@ -1146,10 +1162,10 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-emerald-950">
-                      "{noteSuccess.filename}" Başarıyla Eklendi!
+                      "{noteSuccess.filename}" {isTr ? 'Başarıyla Eklendi!' : 'Added Successfully!'}
                     </p>
                     <p className="text-[11px] text-emerald-700 mt-0.5">
-                      {noteSuccess.orgName} &gt; {noteSuccess.folder} · {noteSuccess.chunkCount} vektör parçası
+                      {noteSuccess.orgName} &gt; {noteSuccess.folder} · {noteSuccess.chunkCount} {isTr ? 'vektör parçası' : 'vector chunks'}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <button
@@ -1157,7 +1173,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                         onClick={() => setNoteSuccess(null)}
                         className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
                       >
-                        Yeni Metin Yaz
+                        {isTr ? 'Yeni Metin Yaz' : 'Write New Note'}
                       </button>
                       {onViewDocument && (
                         <button
@@ -1166,7 +1182,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                           className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <Eye className="w-3 h-3" />
-                          <span>Görüntüle</span>
+                          <span>{isTr ? 'Görüntüle' : 'View'}</span>
                         </button>
                       )}
                       {onNavigateToOrgs && (
@@ -1176,7 +1192,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                           className="px-2.5 py-1 text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <Building2 className="w-3 h-3" />
-                          <span>Kurumlarda Aç</span>
+                          <span>{isTr ? 'Kurumlarda Aç' : 'Open in Portfolios'}</span>
                         </button>
                       )}
                     </div>
@@ -1184,7 +1200,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   <button
                     type="button"
                     onClick={() => setNoteSuccess(null)}
-                    className="text-emerald-400 hover:text-emerald-700 p-0.5"
+                    className="text-emerald-400 hover:text-emerald-700 p-0.5 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1199,7 +1215,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{noteError}</span>
                 </div>
-                <button type="button" onClick={() => setNoteError('')} className="text-red-400 hover:text-red-700">
+                <button type="button" onClick={() => setNoteError('')} className="text-red-400 hover:text-red-700 cursor-pointer">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1209,15 +1225,17 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-800">
-                  Doküman / Not Başlığı <span className="text-red-500">*</span>
+                  {isTr ? 'Doküman / Not Başlığı' : 'Document / Note Title'} <span className="text-red-500">*</span>
                 </label>
-                <span className="text-[10px] text-slate-400 font-mono">.txt formatında kaydedilir</span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {isTr ? '.txt formatında kaydedilir' : 'saved as .txt format'}
+                </span>
               </div>
               <input
                 type="text"
                 value={noteTitle}
                 onChange={(e) => setNoteTitle(e.target.value)}
-                placeholder="Örn: Silivri Arsa Görüşmesi, Nuran Hanım Portföy Notu..."
+                placeholder={isTr ? "Örn: Silivri Arsa Görüşmesi, Nuran Hanım Portföy Notu..." : "e.g. Silivri Land Offer, Client Meeting Note..."}
                 className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 focus:bg-white font-medium transition-all"
                 disabled={noteSaving}
               />
@@ -1227,14 +1245,16 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
             <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-indigo-600" />
-                <span className="text-xs font-bold text-slate-800">Hedef Portföy & Kurum</span>
+                <span className="text-xs font-bold text-slate-800">
+                  {isTr ? 'Hedef Portföy & Kurum' : 'Target Portfolio & Client'}
+                </span>
               </div>
 
               <div className="space-y-2.5">
                 {/* Org dropdown */}
                 <div>
                   <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                    Kurum / Portföy Sahibi
+                    {isTr ? 'Kurum / Portföy Sahibi' : 'Portfolio / Client Owner'}
                   </label>
                   <select
                     value={noteOrgId}
@@ -1245,8 +1265,10 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 font-medium cursor-pointer"
                     disabled={noteSaving}
                   >
-                    <option value="">-- Kurum Seçin (veya AI otomatik eşlesin) --</option>
-                    <option value="__unassigned__">📁 Genel / Klasörsüzler</option>
+                    <option value="">
+                      {isTr ? '-- Kurum Seçin (veya AI otomatik eşlesin) --' : '-- Select Portfolio (or let AI auto-match) --'}
+                    </option>
+                    <option value="__unassigned__">📁 {isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned'}</option>
                     {orgs.map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.name}
@@ -1258,7 +1280,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                 {/* Folder / Portfolio selector / input */}
                 <div>
                   <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                    Klasör / Portföy
+                    {isTr ? 'Klasör / Portföy' : 'Folder / Portfolio'}
                   </label>
                   <input
                     type="text"
@@ -1266,9 +1288,13 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     value={noteFolder}
                     onChange={(e) => setNoteFolder(e.target.value)}
                     placeholder={
-                      noteOrgId && orgs.find((o) => o.id === noteOrgId)?.folders?.length > 0
-                        ? "Mevcut bir klasör seçin veya yeni yazın..."
-                        : "Örn: İzmir dikili 35-65, Arsa Portföyü..."
+                      isTr
+                        ? (noteOrgId && orgs.find((o) => o.id === noteOrgId)?.folders?.length > 0
+                            ? "Mevcut bir klasör seçin veya yeni yazın..."
+                            : "Örn: İzmir dikili 35-65, Arsa Portföyü...")
+                        : (noteOrgId && orgs.find((o) => o.id === noteOrgId)?.folders?.length > 0
+                            ? "Select existing folder or type new..."
+                            : "e.g. Land Portfolio, Contracts...")
                     }
                     className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 font-medium"
                     disabled={noteSaving}
@@ -1312,16 +1338,20 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-800">
-                  Metin / Not İçeriği <span className="text-red-500">*</span>
+                  {isTr ? 'Metin / Not İçeriği' : 'Text / Note Content'} <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {noteContent.length.toLocaleString('tr-TR')} karakter
+                  {noteContent.length.toLocaleString(isTr ? 'tr-TR' : 'en-US')} {isTr ? 'karakter' : 'characters'}
                 </span>
               </div>
               <textarea
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
-                placeholder="WhatsApp yazışmalarını, görüşme notlarını, tapu/ada-parsel bilgilerini veya portföy şartlarını buraya yapıştırın veya yazın..."
+                placeholder={
+                  isTr
+                    ? "WhatsApp yazışmalarını, görüşme notlarını, tapu/ada-parsel bilgilerini veya portföy şartlarını buraya yapıştırın veya yazın..."
+                    : "Paste or type WhatsApp logs, meeting notes, deed/parcel info, or portfolio terms here..."
+                }
                 rows={9}
                 className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:outline-none focus:border-indigo-500 focus:bg-white font-mono leading-relaxed transition-all resize-y min-h-[160px]"
                 disabled={noteSaving}
@@ -1344,11 +1374,13 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   <span className="text-xs font-bold text-slate-800">
-                    Yapay Zeka (AI) ile Biçimlendir &amp; Özetle
+                    {isTr ? 'Yapay Zeka (AI) ile Biçimlendir & Özetle' : 'Auto-Format & Structure with AI'}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
-                  Kişileri, telefonları, fiyatları ve lokasyon detaylarını tespit eder, düzenli başlıklar ve maddeler halinde yapılandırır.
+                  {isTr
+                    ? 'Kişileri, telefonları, fiyatları ve lokasyon detaylarını tespit eder, düzenli başlıklar ve maddeler halinde yapılandırır.'
+                    : 'Detects contacts, phones, prices, and locations, organizing them into clean headings and bullet points.'}
                 </p>
               </div>
             </div>
@@ -1366,12 +1398,12 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
               {noteSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Vektörleştiriliyor &amp; Kaydediliyor...</span>
+                  <span>{isTr ? 'Vektörleştiriliyor & Kaydediliyor...' : 'Vectorizing & Saving...'}</span>
                 </>
               ) : (
                 <>
                   <FileText className="w-4 h-4" />
-                  <span>Metni .txt Olarak Kaydet ve Portföye Ekle</span>
+                  <span>{isTr ? 'Metni .txt Olarak Kaydet ve Portföye Ekle' : 'Save as .txt & Vectorize Note'}</span>
                 </>
               )}
             </button>
@@ -1397,18 +1429,22 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate">Yapay Zeka Asistanı</h2>
-              <p className="text-[11px] text-slate-400 truncate">Portföy ve belgeleriniz hakkında sorularınızı yanıtlar</p>
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate">
+                {isTr ? 'Yapay Zeka Asistanı' : 'AI Assistant'}
+              </h2>
+              <p className="text-[11px] text-slate-400 truncate">
+                {isTr ? 'Portföy ve belgeleriniz hakkında sorularınızı yanıtlar' : 'Answers questions about your portfolio and documents'}
+              </p>
             </div>
           </div>
           {messages.length > 0 && (
             <button
               onClick={handleClear}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
-              title="Sohbet geçmişini temizle"
+              title={isTr ? "Sohbet geçmişini temizle" : "Clear chat history"}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Temizle</span>
+              <span>{isTr ? 'Temizle' : 'Clear'}</span>
             </button>
           )}
         </div>
@@ -1420,16 +1456,24 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
               <div className="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 shadow-2xs">
                 <Sparkles className="w-5 h-5" />
               </div>
-              <h3 className="text-xs sm:text-sm font-bold text-slate-800 mb-1">Nasıl yardımcı olabilirim?</h3>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800 mb-1">
+                {isTr ? 'Nasıl yardımcı olabilirim?' : 'How can I help you?'}
+              </h3>
               <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                Portföyleriniz, tapu kayıtlarınız, sözleşmeleriniz ve notlarınız hakkında merak ettiğiniz her şeyi sorabilirsiniz.
+                {isTr
+                  ? 'Portföyleriniz, tapu kayıtlarınız, sözleşmeleriniz ve notlarınız hakkında merak ettiğiniz her şeyi sorabilirsiniz.'
+                  : 'Ask anything about your portfolios, title deeds, contracts, and client notes.'}
               </p>
               <div className="w-full space-y-1.5">
-                {[
+                {(isTr ? [
                   "Nuran Hanım'ın portföyündeki şartlar neler?",
                   "Silivri'deki arsa ile ilgili belgeleri özetle.",
                   "En son eklenen portföy notlarında neler var?"
-                ].map((prompt, i) => (
+                ] : [
+                  "What are the terms in the latest portfolio?",
+                  "Summarize documents related to land plots and zoning.",
+                  "What are the key points in the recent client notes?"
+                ]).map((prompt, i) => (
                   <button
                     key={i}
                     onClick={() => {
@@ -1493,7 +1537,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   handleSend();
                 }
               }}
-              placeholder="Belgeleriniz hakkında bir soru sorun..."
+              placeholder={isTr ? "Belgeleriniz hakkında bir soru sorun..." : "Ask a question about your documents..."}
               className="w-full bg-transparent border-none focus:outline-none text-slate-800 placeholder:text-slate-400 resize-none py-2 px-3 max-h-32 min-h-[40px] text-xs leading-relaxed"
               rows={1}
             />
@@ -1501,14 +1545,14 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
               type="submit"
               disabled={!input.trim() || isLoading}
               className="p-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl transition-all shrink-0 cursor-pointer disabled:cursor-not-allowed shadow-2xs"
-              title="Gönder"
+              title={isTr ? "Gönder" : "Send"}
             >
               <Send className="w-3.5 h-3.5" />
             </button>
           </form>
           <div className="flex justify-between items-center px-1 mt-1.5 text-[10px] text-slate-400">
-            <span>Enter: Gönder · Shift + Enter: Yeni satır</span>
-            <span>RAG Hafızası devrede</span>
+            <span>{isTr ? 'Enter: Gönder · Shift + Enter: Yeni satır' : 'Enter: Send · Shift + Enter: New line'}</span>
+            <span>{isTr ? 'RAG Hafızası devrede' : 'RAG Memory active'}</span>
           </div>
         </div>
       </div>
@@ -1531,13 +1575,17 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                 <div className="w-14 h-14 rounded-3xl bg-indigo-50 border border-indigo-200 flex items-center justify-center mb-4 text-indigo-600 shadow-sm animate-pulse">
                   <Sparkles className="w-7 h-7" />
                 </div>
-                <h3 className="text-base font-bold text-slate-900">Yapay Zeka Portföy & Dosya Analizi Yapıyor...</h3>
+                <h3 className="text-base font-bold text-slate-900">
+                  {isTr ? 'Yapay Zeka Portföy & Dosya Analizi Yapıyor...' : 'AI Analyzing Portfolios & Documents...'}
+                </h3>
                 <p className="text-xs text-slate-500 mt-1.5 max-w-md leading-relaxed">
-                  Yüklenen {unassignedQueue.length} dosyanın içerikleri inceleniyor; ortak portföy klasörü, ait olduğu kurum ve temiz dosya isimleri hazırlanıyor.
+                  {isTr
+                    ? `Yüklenen ${unassignedQueue.length} dosyanın içerikleri inceleniyor; ortak portföy klasörü, ait olduğu kurum ve temiz dosya isimleri hazırlanıyor.`
+                    : `Analyzing contents of ${unassignedQueue.length} uploaded files to detect common portfolio folder, client organization, and clean filenames.`}
                 </p>
                 <div className="mt-6 flex items-center gap-2 text-xs text-indigo-600 font-semibold bg-indigo-50/80 px-4 py-2 rounded-full border border-indigo-100">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>İçerikler eşleştiriliyor ve klasör yapısı kuruluyor...</span>
+                  <span>{isTr ? 'İçerikler eşleştiriliyor ve klasör yapısı kuruluyor...' : 'Matching contents and building folder hierarchy...'}</span>
                 </div>
               </div>
             ) : (
@@ -1551,11 +1599,13 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     <div>
                       <h2 className="text-base font-bold text-slate-900 leading-tight">
                         {Object.keys(batchFileRenames).length > 1
-                          ? '📁 Portföy Hazırlandı: Hangi Kuruma Eklemek İstersiniz?'
-                          : '📄 Dosya Analiz Edildi: Hangi Kuruma Eklemek İstersiniz?'}
+                          ? (isTr ? '📁 Portföy Hazırlandı: Hangi Kuruma Eklemek İstersiniz?' : '📁 Portfolio Ready: Which Organization Should It Belong To?')
+                          : (isTr ? '📄 Dosya Analiz Edildi: Hangi Kuruma Eklemek İstersiniz?' : '📄 Document Analyzed: Which Organization Should It Belong To?')}
                       </h2>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Yapay zeka {Object.keys(batchFileRenames).length > 1 ? `${Object.keys(batchFileRenames).length} dosyayı tek bir portföy altında topladı` : 'dosyayı analiz etti'}. Lütfen hedef organizasyonu seçin veya onaylayın:
+                        {isTr
+                          ? `Yapay zeka ${Object.keys(batchFileRenames).length > 1 ? `${Object.keys(batchFileRenames).length} dosyayı tek bir portföy altında topladı` : 'dosyayı analiz etti'}. Lütfen hedef organizasyonu seçin veya onaylayın:`
+                          : `AI ${Object.keys(batchFileRenames).length > 1 ? `grouped ${Object.keys(batchFileRenames).length} files into one portfolio` : 'analyzed the document'}. Please select or confirm the target organization:`}
                       </p>
                     </div>
                   </div>
@@ -1567,7 +1617,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                     <div>
                       <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">
-                        ✨ Yapay Zeka Eşleştirme Özeti
+                        {isTr ? '✨ Yapay Zeka Eşleştirme Özeti' : '✨ AI Matching Summary'}
                       </span>
                       <p className="text-xs text-slate-700 font-medium mt-0.5 leading-relaxed">
                         {batchAnalysis.batch_summary}
@@ -1581,19 +1631,19 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                       <Building2 className="w-4 h-4 text-indigo-600" />
-                      <span>1. Hedef Kurum / Müşteri Seçimi</span>
+                      <span>{isTr ? '1. Hedef Kurum / Müşteri Seçimi' : '1. Target Portfolio / Client Selection'}</span>
                     </label>
                     <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-2xs">
                       <button
                         type="button"
                         onClick={() => setShowCreateInline(false)}
-                        className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                        className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
                           !showCreateInline
                             ? 'bg-indigo-600 text-white shadow-2xs'
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        Mevcut Kurumlar
+                        {isTr ? 'Mevcut Kurumlar' : 'Existing Portfolios'}
                       </button>
                       <button
                         type="button"
@@ -1603,13 +1653,13 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                             setInlineOrgName(batchAnalysis?.suggested_org_name || orgDetection?.suggested_org_name);
                           }
                         }}
-                        className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                        className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
                           showCreateInline
                             ? 'bg-indigo-600 text-white shadow-2xs'
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        + Yeni Kurum Oluştur
+                        {isTr ? '+ Yeni Kurum Oluştur' : '+ New Portfolio'}
                       </button>
                     </div>
                   </div>
@@ -1619,10 +1669,10 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     <div className="mb-3 text-xs bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl px-3 py-2 flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                        <span>AI Önerisi: <strong className="font-bold">{batchAnalysis.suggested_org_name}</strong></span>
+                        <span>{isTr ? 'AI Önerisi:' : 'AI Suggestion:'} <strong className="font-bold">{batchAnalysis.suggested_org_name}</strong></span>
                       </div>
                       {!showCreateInline && orgs.some(o => o.id === batchAnalysis.suggested_org_id || o.name.toLowerCase() === batchAnalysis.suggested_org_name.toLowerCase()) ? (
-                        <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-md font-bold">Eşleşti</span>
+                        <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-md font-bold">{isTr ? 'Eşleşti' : 'Matched'}</span>
                       ) : null}
                     </div>
                   )}
@@ -1631,12 +1681,12 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   {showCreateInline ? (
                     <div className="space-y-2.5 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Yeni Kurum / Müşteri Adı *
+                        {isTr ? 'Yeni Kurum / Müşteri Adı *' : 'New Portfolio / Client Name *'}
                       </label>
                       <input
                         value={inlineOrgName}
                         onChange={(e) => setInlineOrgName(e.target.value)}
-                        placeholder="örn. Nuran Hanım, Bassel Group, Özsoy İnşaat..."
+                        placeholder={isTr ? "örn. Nuran Hanım, Bassel Group, Özsoy İnşaat..." : "e.g. Nuran Real Estate, Oakstone Partners..."}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white"
                         autoFocus
                       />
@@ -1668,7 +1718,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                               <div className="text-xs truncate font-medium">{org.name}</div>
                               {org.folders?.length > 0 && (
                                 <div className="text-[10px] text-slate-400 font-normal">
-                                  {org.folders.length} klasör
+                                  {org.folders.length} {isTr ? 'klasör' : 'folders'}
                                 </div>
                               )}
                             </div>
@@ -1696,8 +1746,8 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                       >
                         <div className="w-3.5 h-3.5 rounded-full bg-slate-400 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs truncate font-medium">Genel / Klasörsüzler</div>
-                          <div className="text-[10px] text-slate-400">Kurumsuz genel arşiv</div>
+                          <div className="text-xs truncate font-medium">{isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned'}</div>
+                          <div className="text-[10px] text-slate-400">{isTr ? 'Kurumsuz genel arşiv' : 'Unassigned general archive'}</div>
                         </div>
                         {assignOrgId === '__unassigned__' && (
                           <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
@@ -1714,18 +1764,20 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                       <Folder className="w-4 h-4 text-amber-500" />
-                      <span>2. Portföy / Klasör Adı</span>
+                      <span>{isTr ? '2. Portföy / Klasör Adı' : '2. Folder / Portfolio Name'}</span>
                       {Object.keys(batchFileRenames).length > 1 && (
-                        <span className="text-[10px] text-emerald-600 font-semibold normal-case">(Tüm dosyalar bu klasöre yerleştirilecek)</span>
+                        <span className="text-[10px] text-emerald-600 font-semibold normal-case">
+                          {isTr ? '(Tüm dosyalar bu klasöre yerleştirilecek)' : '(All files will be placed into this folder)'}
+                        </span>
                       )}
                     </label>
                     {assignFolder && (
                       <button
                         type="button"
                         onClick={() => setAssignFolder('')}
-                        className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                        className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                       >
-                        Temizle
+                        {isTr ? 'Temizle' : 'Clear'}
                       </button>
                     )}
                   </div>
@@ -1733,7 +1785,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   {/* Existing Folder Suggestion Chips for Selected Org */}
                   {!showCreateInline && orgs.find((o) => o.id === assignOrgId)?.folders?.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-                      <span className="text-[10px] text-slate-400 font-semibold">Mevcut Klasörler:</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">{isTr ? 'Mevcut Klasörler:' : 'Existing Folders:'}</span>
                       {orgs
                         .find((o) => o.id === assignOrgId)
                         ?.folders.map((fld) => (
@@ -1756,7 +1808,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   <input
                     value={assignFolder}
                     onChange={(e) => setAssignFolder(e.target.value)}
-                    placeholder="örn. Izmir Dikili 35-65, Kadıköy 3+1 Daire, Sözleşmeler..."
+                    placeholder={isTr ? "örn. Izmir Dikili 35-65, Kadıköy 3+1 Daire, Sözleşmeler..." : "e.g. Land Plot 35-65, Downtown Apt 3+1, Contracts..."}
                     className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 font-medium focus:outline-none focus:border-indigo-500 shadow-2xs"
                   />
                 </div>
@@ -1766,16 +1818,16 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                   <label className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <FileText className="w-4 h-4 text-indigo-600" />
-                      <span>3. Temiz Dosya İsimleri ({Object.keys(batchFileRenames).length} Dosya)</span>
+                      <span>{isTr ? `3. Temiz Dosya İsimleri (${Object.keys(batchFileRenames).length} Dosya)` : `3. Clean File Names (${Object.keys(batchFileRenames).length} Files)`}</span>
                     </span>
-                    <span className="text-[10px] text-slate-400 font-normal lowercase">(düzenleyebilirsiniz)</span>
+                    <span className="text-[10px] text-slate-400 font-normal lowercase">{isTr ? '(düzenleyebilirsiniz)' : '(editable)'}</span>
                   </label>
                   <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar p-0.5">
                     {Object.keys(batchFileRenames).length > 0 ? (
                       Object.entries(batchFileRenames).map(([oldName, newName]) => (
                         <div key={oldName} className="p-2.5 bg-white border border-slate-200/80 rounded-xl shadow-2xs">
                           <div className="text-[10px] text-slate-400 truncate mb-1">
-                            Orijinal: <span className="font-mono text-slate-500">{oldName}</span>
+                            {isTr ? 'Orijinal:' : 'Original:'} <span className="font-mono text-slate-500">{oldName}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <ArrowRight className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -1786,7 +1838,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                                 setBatchFileRenames((prev) => ({ ...prev, [oldName]: val }));
                               }}
                               className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white"
-                              placeholder="Dosya adı..."
+                              placeholder={isTr ? "Dosya adı..." : "Filename..."}
                             />
                           </div>
                         </div>
@@ -1810,7 +1862,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     }}
                     className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                   >
-                    İptal / Kapat
+                    {isTr ? 'İptal / Kapat' : 'Cancel / Close'}
                   </button>
 
                   <button
@@ -1821,17 +1873,17 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
                     {isCommittingBatch ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Portföy Oluşturuluyor & Kaydediliyor...</span>
+                        <span>{isTr ? 'Portföy Oluşturuluyor & Kaydediliyor...' : 'Creating & Saving Portfolio...'}</span>
                       </>
                     ) : (
                       <>
                         <Check className="w-4 h-4" />
                         <span>
                           {showCreateInline && inlineOrgName.trim()
-                            ? `✨ "${inlineOrgName.trim()}" Kurumuna Kaydet (${Object.keys(batchFileRenames).length} Dosya)`
+                            ? (isTr ? `✨ "${inlineOrgName.trim()}" Kurumuna Kaydet (${Object.keys(batchFileRenames).length} Dosya)` : `✨ Save to "${inlineOrgName.trim()}" (${Object.keys(batchFileRenames).length} Files)`)
                             : assignOrgId && assignOrgId !== '__unassigned__'
-                            ? `✨ "${orgs.find((o) => o.id === assignOrgId)?.name || 'Kurum'}" Kurumuna Kaydet (${Object.keys(batchFileRenames).length} Dosya)`
-                            : `✨ Portföyü Kaydet (${Object.keys(batchFileRenames).length} Dosya)`}
+                            ? (isTr ? `✨ "${orgs.find((o) => o.id === assignOrgId)?.name || 'Kurum'}" Kurumuna Kaydet (${Object.keys(batchFileRenames).length} Dosya)` : `✨ Save to "${orgs.find((o) => o.id === assignOrgId)?.name || 'Portfolio'}" (${Object.keys(batchFileRenames).length} Files)`)
+                            : (isTr ? `✨ Portföyü Kaydet (${Object.keys(batchFileRenames).length} Dosya)` : `✨ Save Portfolio (${Object.keys(batchFileRenames).length} Files)`)}
                         </span>
                       </>
                     )}
@@ -1871,6 +1923,8 @@ const extractSourceInfo = (text) => {
 
 // ── Interactive Source Citation Badge ─────────────────────────
 const SourceCitationBadge = ({ text, onViewDocument, onTraceGrounding }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
   const info = extractSourceInfo(text);
 
   if (!info) {
@@ -1890,12 +1944,12 @@ const SourceCitationBadge = ({ text, onViewDocument, onTraceGrounding }) => {
         }
       }}
       className="inline-flex items-center gap-1 px-2 py-0.5 my-0.5 mx-0.5 text-[11px] font-medium bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200/80 hover:border-indigo-300 rounded-md transition-all cursor-pointer not-italic align-middle"
-      title={`Tıkla: ${docName}${page && page > 1 ? ` (Sayfa ${page})` : ''} dokümanını aç`}
+      title={isTr ? `Tıkla: ${docName}${page && page > 1 ? ` (Sayfa ${page})` : ''} dokümanını aç` : `Click to view: ${docName}${page && page > 1 ? ` (Page ${page})` : ''}`}
     >
       <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
       <span className="truncate max-w-[170px]">{docName}</span>
       {page && page > 1 && (
-        <span className="text-[10px] text-slate-400 font-mono">s.{page}</span>
+        <span className="text-[10px] text-slate-400 font-mono">{isTr ? 's.' : 'p.'}{page}</span>
       )}
     </button>
   );
@@ -1903,6 +1957,9 @@ const SourceCitationBadge = ({ text, onViewDocument, onTraceGrounding }) => {
 
 // ── Interactive Action Confirmation Card (e.g. for Deleting Portfolios/Docs via Chat) ─
 const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
+
   if (!action) return null;
 
   const isPending = !action.status || action.status === 'pending';
@@ -1921,13 +1978,13 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
             </div>
             <div className="min-w-0">
               <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
-                <span>İşlem Başarıyla Tamamlandı</span>
+                <span>{isTr ? 'İşlem Başarıyla Tamamlandı' : 'Action Completed Successfully'}</span>
                 <span className="text-[10px] bg-emerald-200/80 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">
-                  Silindi
+                  {isTr ? 'Silindi' : 'Deleted'}
                 </span>
               </div>
               <div className="text-[11px] text-emerald-700 font-medium mt-0.5 truncate">
-                {action.resultMessage || `'${action.target_folder || 'Seçilen öğeler'}' sistemden kalıcı olarak kaldırıldı.`}
+                {action.resultMessage || (isTr ? `'${action.target_folder || 'Seçilen öğeler'}' sistemden kalıcı olarak kaldırıldı.` : `'${action.target_folder || 'Selected items'}' were permanently removed.`)}
               </div>
             </div>
           </div>
@@ -1948,10 +2005,12 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
           <div className="w-5 h-5 rounded-md bg-slate-200/80 flex items-center justify-center text-slate-500">
             <X className="w-3 h-3" />
           </div>
-          <span className="text-[11px] font-medium text-slate-600">Silme işlemi iptal edildi. Hiçbir dosya veya kayıt silinmedi.</span>
+          <span className="text-[11px] font-medium text-slate-600">
+            {isTr ? 'Silme işlemi iptal edildi. Hiçbir dosya veya kayıt silinmedi.' : 'Deletion cancelled. No files or records were modified.'}
+          </span>
         </div>
         <span className="text-[10px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-md">
-          İptal Edildi
+          {isTr ? 'İptal Edildi' : 'Cancelled'}
         </span>
       </div>
     );
@@ -1961,7 +2020,7 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
     return (
       <div className="mt-4 p-4 rounded-2xl border border-rose-200 bg-rose-50/70 flex items-center justify-center gap-3 text-rose-800 text-xs font-semibold shadow-xs">
         <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
-        <span>Kalıcı olarak siliniyor, vektör veritabanı ve klasörler güncelleniyor...</span>
+        <span>{isTr ? 'Kalıcı olarak siliniyor, vektör veritabanı ve klasörler güncelleniyor...' : 'Permanently deleting, updating vector store and folders...'}</span>
       </div>
     );
   }
@@ -1977,15 +2036,15 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
           </div>
           <div>
             <div className="text-xs font-bold text-slate-900 tracking-tight">
-              {action.title || 'Silme İşlemi Onayı'}
+              {action.title || (isTr ? 'Silme İşlemi Onayı' : 'Confirm Deletion')}
             </div>
             <div className="text-[11px] text-rose-600 font-medium">
-              Sistemden kalıcı olarak kaldırma işlemi
+              {isTr ? 'Sistemden kalıcı olarak kaldırma işlemi' : 'Permanent removal from system'}
             </div>
           </div>
         </div>
         <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs">
-          Onay Bekliyor
+          {isTr ? 'Onay Bekliyor' : 'Pending Confirmation'}
         </span>
       </div>
 
@@ -1993,7 +2052,7 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
       <div className="space-y-2 mb-3 bg-white/90 p-3 rounded-xl border border-rose-100 shadow-2xs">
         {action.target_org_name && (
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium text-[11px] shrink-0">Kurum:</span>
+            <span className="text-slate-400 font-medium text-[11px] shrink-0">{isTr ? 'Kurum:' : 'Portfolio:'}</span>
             <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70">
               {action.target_org_name}
             </span>
@@ -2002,7 +2061,7 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
 
         {action.target_folder && (
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium text-[11px] shrink-0">Portföy / Klasör:</span>
+            <span className="text-slate-400 font-medium text-[11px] shrink-0">{isTr ? 'Portföy / Klasör:' : 'Folder:'}</span>
             <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 flex items-center gap-1.5">
               <Folder className="w-3.5 h-3.5 text-indigo-500" />
               {action.target_folder}
@@ -2013,7 +2072,7 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
         {action.target_filenames && action.target_filenames.length > 0 && (
           <div className="pt-1">
             <div className="text-[11px] font-medium text-slate-500 mb-1.5 flex items-center justify-between">
-              <span>Silinecek Dokümanlar ({action.target_filenames.length}):</span>
+              <span>{isTr ? `Silinecek Dokümanlar (${action.target_filenames.length}):` : `Documents to delete (${action.target_filenames.length}):`}</span>
               <span className="text-[10px] text-rose-500 font-mono">ChromaDB + Disk</span>
             </div>
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar p-0.5">
@@ -2036,13 +2095,13 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
       <div className="flex items-start gap-2 mb-3.5 text-[11px] text-rose-800 bg-rose-100/70 p-2.5 rounded-xl border border-rose-200">
         <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
         <div className="leading-snug">
-          <strong>Dikkat:</strong> Bu işlem geri alınamaz. İlgili portföy, tapu/sözleşme görselleri ve vektör indeksleri sistemden tamamen temizlenecektir.
+          <strong>{isTr ? 'Dikkat:' : 'Warning:'}</strong> {isTr ? 'Bu işlem geri alınamaz. İlgili portföy, tapu/sözleşme görselleri ve vektör indeksleri sistemden tamamen temizlenecektir.' : 'This action cannot be undone. Associated portfolios, deed/contract images, and vector indices will be permanently wiped from the database.'}
         </div>
       </div>
 
       {isError && (
         <div className="mb-3 text-[11px] text-red-600 font-medium bg-red-50 p-2 rounded-lg border border-red-200">
-          Hata: {action.errorMsg || 'Silme işlemi gerçekleştirilemedi.'}
+          {isTr ? 'Hata:' : 'Error:'} {action.errorMsg || (isTr ? 'Silme işlemi gerçekleştirilemedi.' : 'Failed to perform deletion.')}
         </div>
       )}
 
@@ -2053,14 +2112,14 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
           className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs shadow-xs hover:shadow-sm active:scale-[0.99] transition-all cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span>Evet, Sistemden Sil</span>
+          <span>{isTr ? 'Evet, Sistemden Sil' : 'Yes, Delete from System'}</span>
         </button>
         <button
           onClick={() => onCancel(msgIndex)}
           className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 shadow-2xs active:scale-[0.99] transition-all cursor-pointer flex items-center gap-1.5"
         >
           <X className="w-3.5 h-3.5 text-slate-400" />
-          <span>Vazgeç / İptal</span>
+          <span>{isTr ? 'Vazgeç / İptal' : 'Cancel'}</span>
         </button>
       </div>
     </div>
@@ -2069,6 +2128,8 @@ const ActionConfirmationCard = ({ action, msgIndex, onExecute, onCancel }) => {
 
 // ── Message Bubble with Clean Typography & Clickable Citations ─
 const MessageBubble = ({ message, msgIndex, onViewDocument, onGoToInspector, onTraceGrounding, onExecuteAction, onCancelAction }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
 
@@ -2081,19 +2142,21 @@ const MessageBubble = ({ message, msgIndex, onViewDocument, onGoToInspector, onT
   // Convert raw legacy citations like ([Document: file.pdf | Organization: Org], Page: 4) into cleaner markdown
   const formattedContent = React.useMemo(() => {
     if (!message.content) return '';
+    const lblDoc = isTr ? 'Kaynak:' : 'Source:';
+    const lblOrg = isTr ? 'Kurum:' : 'Org:';
     return message.content
       .replace(
         /\(\[Document:\s*([^\]|]+)\s*\|\s*Organization:\s*([^\]]+)\](?:,\s*Page:\s*(\d+))?\)/gi,
         (_, doc, org, page) => {
-          const pStr = page ? `, s. ${page}` : '';
-          return `*(Kaynak: ${doc.trim()}${pStr} | Kurum: ${org.trim()})*`;
+          const pStr = page ? (isTr ? `, s. ${page}` : `, p. ${page}`) : '';
+          return `*(${lblDoc} ${doc.trim()}${pStr} | ${lblOrg} ${org.trim()})*`;
         }
       )
       .replace(
         /\[Document:\s*([^\]|]+)\s*\|\s*Organization:\s*([^\]]+)\]/gi,
-        (_, doc, org) => `*(Kaynak: ${doc.trim()} | Kurum: ${org.trim()})*`
+        (_, doc, org) => `*(${lblDoc} ${doc.trim()} | ${lblOrg} ${org.trim()})*`
       );
-  }, [message.content]);
+  }, [message.content, isTr]);
 
   return (
     <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -2256,15 +2319,15 @@ const MessageBubble = ({ message, msgIndex, onViewDocument, onGoToInspector, onT
           <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 text-[11px] text-slate-400">
             <span className="flex items-center gap-1 text-[10px]">
               <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
-              <span>Asistan</span>
+              <span>{isTr ? 'Asistan' : 'Assistant'}</span>
             </span>
             <button
               onClick={handleCopy}
               className="flex items-center gap-1 text-slate-400 hover:text-slate-700 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-50 cursor-pointer"
-              title="Cevabı kopyala"
+              title={isTr ? "Cevabı kopyala" : "Copy response"}
             >
-              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
+              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-400" />}
+              <span>{copied ? (isTr ? 'Kopyalandı' : 'Copied') : (isTr ? 'Kopyala' : 'Copy')}</span>
             </button>
           </div>
         )}
@@ -2275,6 +2338,8 @@ const MessageBubble = ({ message, msgIndex, onViewDocument, onGoToInspector, onT
 
 // ── Sources with Organization Info & PDF/Image Link ────────────
 const Sources = ({ sources, onViewDocument, onGoToInspector, onTraceGrounding }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -2286,7 +2351,7 @@ const Sources = ({ sources, onViewDocument, onGoToInspector, onTraceGrounding })
         {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         <BookOpen className="w-3 h-3" />
         <span>
-          Kaynak Belgeler ({sources.length})
+          {isTr ? 'Kaynak Belgeler' : 'Source Documents'} ({sources.length})
         </span>
       </button>
 
@@ -2310,13 +2375,13 @@ const Sources = ({ sources, onViewDocument, onGoToInspector, onTraceGrounding })
                     type="button"
                     onClick={() => onViewDocument && onViewDocument({ docName: src.source, page: src.page })}
                     className="text-[11px] font-medium text-indigo-600 hover:underline truncate cursor-pointer flex items-center gap-1"
-                    title={`Tıkla: ${src.source} dokümanını aç`}
+                    title={isTr ? `Tıkla: ${src.source} dokümanını aç` : `Click to view: ${src.source}`}
                   >
                     <FileText className="w-3 h-3 shrink-0" />
                     <span className="truncate max-w-[200px]">{src.source}</span>
                   </button>
                   {src.page && (
-                    <span className="text-[10px] font-mono text-slate-400 shrink-0">s.{src.page}</span>
+                    <span className="text-[10px] font-mono text-slate-400 shrink-0">{isTr ? 's.' : 'p.'}{src.page}</span>
                   )}
                 </div>
               </div>

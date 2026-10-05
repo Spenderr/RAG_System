@@ -7,6 +7,7 @@ import {
   ZoomIn, ZoomOut, Download, MessageSquare, Copy, StickyNote,
   Send, Share2, Sparkle, CheckSquare, Square, RotateCcw, Maximize2, ExternalLink
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
@@ -17,6 +18,8 @@ const COLORS = [
 // Inline File Preview Panel
 // ─────────────────────────────────────────────────────────────────
 const InlinePreview = ({ doc, onClose, onDelete }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
   const isPdf = doc?.name?.toLowerCase().endsWith('.pdf');
   const isImg = /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(doc?.name || '');
   const isWhatsApp = doc?.doc_type === 'whatsapp' || doc?.name?.toLowerCase().includes('whatsapp') || doc?.tags?.includes('whatsapp');
@@ -54,7 +57,9 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
               {doc.name}
             </span>
             {isWhatsApp && (
-              <span className="text-[10px] text-emerald-600 font-medium">WhatsApp / Metin Notu</span>
+              <span className="text-[10px] text-emerald-600 font-medium">
+                {isTr ? 'WhatsApp / Metin Notu' : 'WhatsApp / Quick Note'}
+              </span>
             )}
           </div>
         </div>
@@ -67,7 +72,7 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
                   setZoom(z => Math.max(0.25, parseFloat((z - 0.25).toFixed(2))));
                 }}
                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                title="Küçült (-25%)"
+                title={isTr ? "Küçült (-25%)" : "Zoom Out (-25%)"}
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
@@ -77,9 +82,9 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
                   setZoom(1);
                 }}
                 className="px-2 py-0.5 text-[10px] font-mono text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors cursor-pointer"
-                title="Ekrana Sığdır / Sıfırla"
+                title={isTr ? "Ekrana Sığdır / Sıfırla" : "Fit to Screen / Reset"}
               >
-                {isFit && zoom === 1 ? 'Sığdır' : `${Math.round(zoom * 100)}%`}
+                {isFit && zoom === 1 ? (isTr ? 'Sığdır' : 'Fit') : `${Math.round(zoom * 100)}%`}
               </button>
               <button
                 onClick={() => {
@@ -87,7 +92,7 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
                   setZoom(z => Math.min(3, parseFloat((z + 0.25).toFixed(2))));
                 }}
                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                title="Büyüt (+25%)"
+                title={isTr ? "Büyüt (+25%)" : "Zoom In (+25%)"}
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
@@ -98,7 +103,7 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
             href={fileUrl}
             download={doc.name}
             className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-            title="Dosyayı İndir"
+            title={isTr ? "Dosyayı İndir" : "Download File"}
           >
             <Download className="w-3.5 h-3.5" />
           </a>
@@ -107,7 +112,7 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
             <button
               onClick={() => onDelete(doc.name)}
               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-              title="Bu Dokümanı Sil"
+              title={isTr ? "Bu Dokümanı Sil" : "Delete This Document"}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -115,7 +120,7 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
           <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-            title="Kapat"
+            title={isTr ? "Kapat" : "Close"}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -156,9 +161,9 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
 
       {/* Meta footer */}
       <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/80 shrink-0 flex items-center gap-3 text-[10px] text-slate-400 font-mono">
-        <span>{doc.chunk_count || 0} chunk</span>
+        <span>{doc.chunk_count || 0} {isTr ? 'chunk' : 'chunks'}</span>
         <span>·</span>
-        <span>{(doc.char_count || 0).toLocaleString()} karakter</span>
+        <span>{(doc.char_count || 0).toLocaleString()} {isTr ? 'karakter' : 'chars'}</span>
         {doc.folder && (
           <>
             <span>·</span>
@@ -171,6 +176,8 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
 };
 
 const TextPreview = ({ filename, isWhatsApp }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -192,9 +199,9 @@ const TextPreview = ({ filename, isWhatsApp }) => {
         setText(d.content || '');
         setEditedText(d.content || '');
       })
-      .catch(() => setText('İçerik yüklenemedi.'))
+      .catch(() => setText(isTr ? 'İçerik yüklenemedi.' : 'Failed to load content.'))
       .finally(() => setLoading(false));
-  }, [filename]);
+  }, [filename, isTr]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
@@ -227,7 +234,7 @@ const TextPreview = ({ filename, isWhatsApp }) => {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.detail || 'Kayıt başarısız oldu');
+        throw new Error(err.detail || (isTr ? 'Kayıt başarısız oldu' : 'Failed to save content'));
       }
       setText(editedText);
       setIsEditing(false);
@@ -251,12 +258,12 @@ const TextPreview = ({ filename, isWhatsApp }) => {
       <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            {isWhatsApp ? '💬 WhatsApp / Not Kaydı' : '📄 Metin İçeriği'}
+            {isWhatsApp ? (isTr ? '💬 WhatsApp / Not Kaydı' : '💬 WhatsApp / Quick Note') : (isTr ? '📄 Metin İçeriği' : '📄 Text Content')}
           </span>
           {saveSuccess && (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
               <Check className="w-3 h-3 text-emerald-600" />
-              Depo Hafızası Güncellendi
+              {isTr ? 'Depo Hafızası Güncellendi' : 'Memory Updated'}
             </span>
           )}
         </div>
@@ -266,17 +273,17 @@ const TextPreview = ({ filename, isWhatsApp }) => {
               <button
                 onClick={handleStartEdit}
                 className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 px-2.5 py-1 rounded-lg border border-indigo-200/80 shadow-2xs transition-all cursor-pointer"
-                title="Notun içine yeni bilgi ekle veya düzenle"
+                title={isTr ? "Notun içine yeni bilgi ekle veya düzenle" : "Add or edit note content"}
               >
                 <Edit2 className="w-3 h-3" />
-                <span>Düzenle / Not Düş</span>
+                <span>{isTr ? 'Düzenle / Not Düş' : 'Edit / Add Note'}</span>
               </button>
               <button
                 onClick={handleCopy}
                 className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition-colors cursor-pointer"
               >
                 {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
+                <span>{copied ? (isTr ? 'Kopyalandı' : 'Copied!') : (isTr ? 'Kopyala' : 'Copy')}</span>
               </button>
             </>
           ) : (
@@ -287,7 +294,7 @@ const TextPreview = ({ filename, isWhatsApp }) => {
                 className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-3 h-3" />
-                <span>Vazgeç</span>
+                <span>{isTr ? 'Vazgeç' : 'Cancel'}</span>
               </button>
               <button
                 onClick={handleSaveEdit}
@@ -297,12 +304,12 @@ const TextPreview = ({ filename, isWhatsApp }) => {
                 {isSaving ? (
                   <>
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>Kaydediliyor...</span>
+                    <span>{isTr ? 'Kaydediliyor...' : 'Saving...'}</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-3.5 h-3.5" />
-                    <span>Kaydet & Hafızayı Güncelle</span>
+                    <span>{isTr ? 'Kaydet & Hafızayı Güncelle' : 'Save & Re-index'}</span>
                   </>
                 )}
               </button>
@@ -322,14 +329,14 @@ const TextPreview = ({ filename, isWhatsApp }) => {
         {isEditing ? (
           <div className="flex-1 flex flex-col">
             <div className="mb-2 flex items-center justify-between text-[11px] text-slate-400">
-              <span>İçeriği düzenleyin veya altına yeni notlar ekleyin (Markdown desteklenir)</span>
-              <span>{editedText.length.toLocaleString()} karakter</span>
+              <span>{isTr ? 'İçeriği düzenleyin veya altına yeni notlar ekleyin (Markdown desteklenir)' : 'Edit content or append new notes (Markdown supported)'}</span>
+              <span>{editedText.length.toLocaleString()} {isTr ? 'karakter' : 'chars'}</span>
             </div>
             <textarea
               value={editedText}
               onChange={(e) => setEditedText(e.target.value)}
               className="flex-1 w-full p-3 text-xs text-slate-800 font-sans leading-relaxed border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none custom-scrollbar"
-              placeholder="Not içeriğini buraya yazın..."
+              placeholder={isTr ? "Not içeriğini buraya yazın..." : "Type note content here..."}
               autoFocus
             />
           </div>
@@ -351,68 +358,73 @@ const TextPreview = ({ filename, isWhatsApp }) => {
 const FolderIcon = ({
   name, count, isActive, onClick, onDelete,
   isDropTarget, onDragOver, onDragLeave, onDrop
-}) => (
-  <div className="group relative select-none">
-    <button
-      onClick={onClick}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-24 cursor-pointer ${
-        isDropTarget
-          ? 'bg-emerald-100/90 ring-4 ring-emerald-400 scale-110 shadow-lg'
-          : isActive
-          ? 'bg-indigo-100/80 ring-2 ring-indigo-400/60'
-          : 'hover:bg-slate-100/80 active:bg-slate-200/60'
-      }`}
-      title={`${name}\n(Tıklayın: Aç | Sürükleyin: Dosya Taşı)`}
-    >
-      {/* Folder body */}
-      <div className={`relative w-14 h-11 transition-transform ${isDropTarget ? 'scale-105' : ''}`}>
-        {/* Folder back */}
-        <div className={`absolute bottom-0 left-0 w-full h-9 rounded-xl rounded-tl-none shadow-sm transition-colors ${
-          isDropTarget ? 'bg-emerald-400' : 'bg-amber-300'
-        }`} />
-        {/* Folder tab */}
-        <div className={`absolute top-0 left-0 w-8 h-2.5 rounded-t-md transition-colors ${
-          isDropTarget ? 'bg-emerald-400' : 'bg-amber-300'
-        }`} />
-        {/* Folder front highlight */}
-        <div className={`absolute bottom-0 left-0 w-full h-8 rounded-xl rounded-tl-none transition-colors ${
-          isDropTarget ? 'bg-gradient-to-b from-emerald-300 to-emerald-400' : 'bg-gradient-to-b from-amber-200 to-amber-300'
-        }`} />
-        {/* Count badge */}
-        {count > 0 && (
-          <div className={`absolute bottom-1.5 right-1.5 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none transition-colors ${
-            isDropTarget ? 'bg-emerald-600' : 'bg-amber-500/80'
-          }`}>
-            {count}
-          </div>
-        )}
-      </div>
-      <span className={`text-[11px] font-semibold text-center leading-tight max-w-full truncate w-full transition-colors ${
-        isDropTarget ? 'text-emerald-800 font-bold' : isActive ? 'text-indigo-700' : 'text-slate-700'
-      }`}>
-        {isDropTarget ? 'Buraya Bırak' : name}
-      </span>
-    </button>
+}) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
 
-    {/* Delete Folder button on hover */}
-    {onDelete && (
+  return (
+    <div className="group relative select-none">
       <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(name);
-        }}
-        className="absolute top-1 right-1 w-6 h-6 rounded-lg bg-white/95 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 shadow-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-20 cursor-pointer"
-        title={`"${name}" klasörünü sil`}
+        onClick={onClick}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all w-24 cursor-pointer ${
+          isDropTarget
+            ? 'bg-emerald-100/90 ring-4 ring-emerald-400 scale-110 shadow-lg'
+            : isActive
+            ? 'bg-indigo-100/80 ring-2 ring-indigo-400/60'
+            : 'hover:bg-slate-100/80 active:bg-slate-200/60'
+        }`}
+        title={isTr ? `${name}\n(Tıklayın: Aç | Sürükleyin: Dosya Taşı)` : `${name}\n(Click: Open | Drag: Move File)`}
       >
-        <Trash2 className="w-3 h-3" />
+        {/* Folder body */}
+        <div className={`relative w-14 h-11 transition-transform ${isDropTarget ? 'scale-105' : ''}`}>
+          {/* Folder back */}
+          <div className={`absolute bottom-0 left-0 w-full h-9 rounded-xl rounded-tl-none shadow-sm transition-colors ${
+            isDropTarget ? 'bg-emerald-400' : 'bg-amber-300'
+          }`} />
+          {/* Folder tab */}
+          <div className={`absolute top-0 left-0 w-8 h-2.5 rounded-t-md transition-colors ${
+            isDropTarget ? 'bg-emerald-400' : 'bg-amber-300'
+          }`} />
+          {/* Folder front highlight */}
+          <div className={`absolute bottom-0 left-0 w-full h-8 rounded-xl rounded-tl-none transition-colors ${
+            isDropTarget ? 'bg-gradient-to-b from-emerald-300 to-emerald-400' : 'bg-gradient-to-b from-amber-200 to-amber-300'
+          }`} />
+          {/* Count badge */}
+          {count > 0 && (
+            <div className={`absolute bottom-1.5 right-1.5 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none transition-colors ${
+              isDropTarget ? 'bg-emerald-600' : 'bg-amber-500/80'
+            }`}>
+              {count}
+            </div>
+          )}
+        </div>
+        <span className={`text-[11px] font-semibold text-center leading-tight max-w-full truncate w-full transition-colors ${
+          isDropTarget ? 'text-emerald-800 font-bold' : isActive ? 'text-indigo-700' : 'text-slate-700'
+        }`}>
+          {isDropTarget ? (isTr ? 'Buraya Bırak' : 'Drop Here') : name}
+        </span>
       </button>
-    )}
-  </div>
-);
+
+      {/* Delete Folder button on hover */}
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(name);
+          }}
+          className="absolute top-1 right-1 w-6 h-6 rounded-lg bg-white/95 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 shadow-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-20 cursor-pointer"
+          title={isTr ? `"${name}" klasörünü sil` : `Delete folder "${name}"`}
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
+};
 
 const FileCard = ({
   doc, isActive, isSelected, isSelectionMode, isDragging,
@@ -420,6 +432,8 @@ const FileCard = ({
   onDragStart, onDragEnd,
   allFolders, selectedOrg,
 }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
   const isPdf = doc.name.toLowerCase().endsWith('.pdf');
   const isImg = /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(doc.name);
   const isWhatsApp = doc.doc_type === 'whatsapp' || doc.name.toLowerCase().includes('whatsapp') || doc.tags?.includes('whatsapp');
@@ -451,7 +465,7 @@ const FileCard = ({
           ? 'bg-indigo-50/90 ring-2 ring-indigo-300'
           : 'hover:bg-slate-100/80 active:bg-slate-200/60'
       }`}
-      title={`${doc.name}\n(Tıklayın: Önizle | Sürükleyin: Taşı | Seçin: Toplu İşlem)`}
+      title={isTr ? `${doc.name}\n(Tıklayın: Önizle | Sürükleyin: Taşı | Seçin: Toplu İşlem)` : `${doc.name}\n(Click: Preview | Drag: Move | Select: Batch Action)`}
     >
       {/* Multi-Selection Checkbox */}
       <button
@@ -467,7 +481,7 @@ const FileCard = ({
             ? 'bg-white/95 border border-slate-300 text-slate-400 hover:border-indigo-400'
             : 'bg-white/90 border border-slate-300 text-transparent hover:text-slate-400 opacity-0 group-hover:opacity-100'
         }`}
-        title={isSelected ? 'Seçimi kaldır' : 'Seç'}
+        title={isSelected ? (isTr ? 'Seçimi kaldır' : 'Deselect') : (isTr ? 'Seç' : 'Select')}
       >
         <Check className={`w-3.5 h-3.5 ${isSelected ? 'opacity-100 stroke-[3]' : 'opacity-0'}`} />
       </button>
@@ -523,29 +537,29 @@ const FileCard = ({
         >
           <button
             onClick={(e) => { e.stopPropagation(); onPreview(doc); }}
-            className="p-1 text-white hover:text-indigo-300 transition-colors"
-            title="Önizle"
+            className="p-1 text-white hover:text-indigo-300 transition-colors cursor-pointer"
+            title={isTr ? "Önizle" : "Preview"}
           >
             <Eye className="w-3 h-3" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onMoveFolder(doc); }}
-            className="p-1 text-white hover:text-amber-300 transition-colors"
-            title="Klasöre Taşı"
+            className="p-1 text-white hover:text-amber-300 transition-colors cursor-pointer"
+            title={isTr ? "Klasöre Taşı" : "Move to Folder"}
           >
             <FolderOpen className="w-3 h-3" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onAssign(doc); }}
-            className="p-1 text-white hover:text-indigo-300 transition-colors"
-            title="Kuruma Taşı"
+            className="p-1 text-white hover:text-indigo-300 transition-colors cursor-pointer"
+            title={isTr ? "Kuruma Taşı" : "Move to Portfolio"}
           >
             <Building2 className="w-3 h-3" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(doc.name); }}
-            className="p-1 text-white hover:text-red-400 transition-colors"
-            title="Sil"
+            className="p-1 text-white hover:text-red-400 transition-colors cursor-pointer"
+            title={isTr ? "Sil" : "Delete"}
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -559,6 +573,10 @@ const FileCard = ({
         </p>
         {doc.folder ? (
           <p className="text-[9px] text-indigo-600 font-semibold truncate mt-0.5">📁 {doc.folder}</p>
+        ) : selectedOrg?.id === '__unassigned__' && doc.org_name && doc.org_id !== '__unassigned__' ? (
+          <p className="text-[9px] font-semibold truncate mt-0.5" style={{ color: doc.org_color || '#6366f1' }}>
+            🏢 {doc.org_name}
+          </p>
         ) : isWhatsApp ? (
           <p className="text-[9px] text-emerald-600 font-semibold truncate mt-0.5">💬 WhatsApp</p>
         ) : null}
@@ -578,6 +596,8 @@ const ExplorerGrid = ({
   selectedDocNames, onToggleSelectDoc, onDeleteDoc,
   onDeleteFolder,
 }) => {
+  const { language } = useLanguage();
+  const isTr = language === 'tr';
   // Group docs by folder when viewing "all"
   const showFolderIcons = selectedFolderFilter === 'all' && allFolders.length > 0;
   const isSelectionMode = selectedDocNames.length > 0;
@@ -614,10 +634,10 @@ const ExplorerGrid = ({
             <button
               onClick={() => setSelectedFolderFilter('all')}
               className="px-2.5 py-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-slate-200/80 shadow-2xs cursor-pointer flex items-center gap-1 text-xs font-semibold bg-white"
-              title="Tüm dokümanlara geri dön"
+              title={isTr ? "Tüm dokümanlara geri dön" : "Back to all files"}
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Geri</span>
+              <span className="hidden sm:inline">{isTr ? 'Geri' : 'Back'}</span>
             </button>
             <div className="w-8 h-8 rounded-xl bg-amber-100/90 text-amber-700 flex items-center justify-center shadow-2xs">
               <Folder className="w-4 h-4" />
@@ -626,20 +646,20 @@ const ExplorerGrid = ({
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-slate-900">{selectedFolderFilter}</h3>
                 <span className="text-[10px] font-mono font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {docs.length} dosya
+                  {docs.length} {isTr ? 'dosya' : 'files'}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400">Bu klasör / portföye ait dokümanlar</p>
+              <p className="text-[10px] text-slate-400">{isTr ? 'Bu klasör / portföye ait dokümanlar' : 'Documents in this folder / portfolio'}</p>
             </div>
           </div>
           {!selectedOrg.is_system && onDeleteFolder && (
             <button
               onClick={() => onDeleteFolder(selectedFolderFilter)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-xl border border-red-200 hover:border-red-600 transition-all cursor-pointer shadow-2xs"
-              title={`"${selectedFolderFilter}" klasörünü sil`}
+              title={isTr ? `"${selectedFolderFilter}" klasörünü sil` : `Delete folder "${selectedFolderFilter}"`}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Klasörü Sil</span>
+              <span>{isTr ? 'Klasörü Sil' : 'Delete Folder'}</span>
             </button>
           )}
         </div>
@@ -649,10 +669,10 @@ const ExplorerGrid = ({
       {showFolderIcons && (
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2.5">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Klasörler / Portföyler</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{isTr ? 'Klasörler / Portföyler' : 'Folders / Sub-Portfolios'}</p>
             {draggedDoc && (
               <span className="text-[10px] text-emerald-600 font-bold animate-pulse">
-                👇 Dosyayı bir klasörün üzerine bırakın
+                {isTr ? '👇 Dosyayı bir klasörün üzerine bırakın' : '👇 Drop the file onto a folder'}
               </span>
             )}
           </div>
@@ -696,7 +716,7 @@ const ExplorerGrid = ({
         <>
           {showFolderIcons && (
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-              Tüm Dosyalar
+              {isTr ? 'Tüm Dosyalar' : 'All Files'}
             </p>
           )}
           <div className="flex flex-wrap gap-1.5">
@@ -732,6 +752,8 @@ const ExplorerGrid = ({
 // Main Organizations Component
 // ─────────────────────────────────────────────────────────────────
 const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClearInitialOrgId }) => {
+  const { language, t } = useLanguage();
+  const isTr = language === 'tr';
   const [organizations, setOrganizations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrgId, setSelectedOrgId] = useState(initialOrgId || null);
@@ -1415,19 +1437,19 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         {/* Left header */}
         <div className="px-4 pt-5 pb-3 border-b border-slate-100 shrink-0">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-slate-900">Kurumlar</h2>
+            <h2 className="text-sm font-bold text-slate-900">{isTr ? 'Kurumlar & Portföyler' : 'Portfolios & Clients'}</h2>
             <div className="flex items-center gap-1">
               <button
                 onClick={fetchOrganizations}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Yenile"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title={isTr ? "Yenile" : "Refresh"}
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-500' : ''}`} />
               </button>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs shadow-indigo-600/20"
-                title="Yeni Kurum"
+                className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs shadow-indigo-600/20 cursor-pointer"
+                title={isTr ? "Yeni Portföy" : "New Portfolio"}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -1438,7 +1460,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Kurum ara..."
+              placeholder={isTr ? "Portföy ara..." : "Search portfolios..."}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400"
             />
           </div>
@@ -1453,12 +1475,12 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           ) : userOrgs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-8 text-slate-400">
               <Building2 className="w-8 h-8 text-slate-300" />
-              <p className="text-xs text-center">Henüz kurum yok</p>
+              <p className="text-xs text-center">{isTr ? 'Henüz kurum yok' : 'No portfolios yet'}</p>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="text-xs text-indigo-600 font-semibold hover:underline"
               >
-                + Kurum oluştur
+                + {isTr ? 'Kurum oluştur' : 'Create Portfolio'}
               </button>
             </div>
           ) : (
@@ -1492,7 +1514,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                           ? 'bg-indigo-50 border border-indigo-200/80 shadow-xs'
                           : 'hover:bg-slate-50 border border-transparent'
                       }`}
-                      title={isOrgDropTarget ? `"${draggedDoc?.name}" dosyasını buraya bırakın` : org.name}
+                      title={isOrgDropTarget ? (isTr ? `"${draggedDoc?.name}" dosyasını buraya bırakın` : `Drop "${draggedDoc?.name}" here`) : org.name}
                     >
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
@@ -1502,9 +1524,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-bold truncate ${isOrgDropTarget ? 'text-emerald-800' : isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>
-                          {isOrgDropTarget ? 'Buraya Taşı' : org.name}
+                          {isOrgDropTarget ? (isTr ? 'Buraya Taşı' : 'Move Here') : org.name}
                         </p>
-                        <p className="text-[10px] text-slate-400 font-mono">{org.document_count} dok.</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{org.document_count} {isTr ? 'dok.' : 'docs'}</p>
                       </div>
                       {isSelected && !isOrgDropTarget && <ChevronRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
                     </button>
@@ -1565,9 +1587,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-600 truncate">
-                    {dragOverOrgId === unassignedOrg.id ? 'Kurumsuz Havuza Taşı' : (unassignedOrg.name || 'Kurumsuz Belgeler')}
+                    {dragOverOrgId === unassignedOrg.id ? (isTr ? 'Klasörsüz Havuza Taşı' : 'Move to Unassigned') : (unassignedOrg.id === '__unassigned__' ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : unassignedOrg.name)}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">{unassignedOrg.document_count} doküman</p>
+                  <p className="text-[10px] text-slate-400 font-mono">{unassignedOrg.document_count} {isTr ? 'doküman' : 'docs'}</p>
                 </div>
               </button>
             </div>
@@ -1583,8 +1605,8 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         {!selectedOrg ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
             <Building2 className="w-12 h-12 text-slate-300 mb-3" />
-            <p className="text-sm font-semibold text-slate-600">Bir kurum seçin</p>
-            <p className="text-xs mt-1">Sol panelden bir kurum seçerek dosyalarını görüntüleyin</p>
+            <p className="text-sm font-semibold text-slate-600">{isTr ? 'Bir kurum seçin' : 'Select a portfolio'}</p>
+            <p className="text-xs mt-1">{isTr ? 'Sol panelden bir kurum seçerek dosyalarını görüntüleyin' : 'Select a portfolio from the left panel to view its files'}</p>
           </div>
         ) : (
           <>
@@ -1603,7 +1625,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                           ? 'text-slate-700 hover:text-indigo-600 hover:bg-white shadow-2xs cursor-pointer active:scale-95'
                           : 'text-slate-300 cursor-not-allowed opacity-40'
                       }`}
-                      title={canGoBack ? 'Geri git (Alt + Sol Ok)' : 'Geri gidilemez'}
+                      title={canGoBack ? (isTr ? 'Geri git (Alt + Sol Ok)' : 'Go back (Alt + Left Arrow)') : (isTr ? 'Geri gidilemez' : 'Cannot go back')}
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
@@ -1615,7 +1637,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                           ? 'text-slate-700 hover:text-indigo-600 hover:bg-white shadow-2xs cursor-pointer active:scale-95'
                           : 'text-slate-300 cursor-not-allowed opacity-40'
                       }`}
-                      title={canGoForward ? 'İleri git (Alt + Sağ Ok)' : 'İleri gidilemez'}
+                      title={canGoForward ? (isTr ? 'İleri git (Alt + Sağ Ok)' : 'Go forward (Alt + Right Arrow)') : (isTr ? 'İleri gidilemez' : 'Cannot go forward')}
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -1630,10 +1652,12 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                           ? 'text-indigo-600 font-bold bg-indigo-50/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer'
                       }`}
-                      title={`${selectedOrg.name} tüm dosyaları`}
+                      title={isTr ? `${selectedOrg.name} tüm dosyaları` : `All files in ${selectedOrg.name}`}
                     >
                       <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: selectedOrg.color }} />
-                      <span className="truncate max-w-[140px] sm:max-w-[220px]">{selectedOrg.name}</span>
+                      <span className="truncate max-w-[140px] sm:max-w-[220px]">
+                        {selectedOrg.is_system ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : selectedOrg.name}
+                      </span>
                     </button>
 
                     {selectedFolderFilter !== 'all' && (
@@ -1642,7 +1666,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 font-semibold border border-amber-200/60 shadow-2xs min-w-0">
                           <Folder className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                           <span className="truncate max-w-[160px] sm:max-w-[240px]">
-                            {selectedFolderFilter === '__unfolded__' ? 'Klasörsüz Dosyalar' : selectedFolderFilter}
+                            {selectedFolderFilter === '__unfolded__' ? (isTr ? 'Klasörsüz Dosyalar' : 'Unassigned Files') : selectedFolderFilter}
                           </span>
                         </div>
                       </>
@@ -1653,7 +1677,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 {/* History position badge */}
                 {navState.history.length > 1 && (
                   <div className="hidden sm:flex items-center text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shrink-0">
-                    Geçmiş: {navState.index + 1}/{navState.history.length}
+                    {isTr ? 'Geçmiş:' : 'History:'} {navState.index + 1}/{navState.history.length}
                   </div>
                 )}
               </div>
@@ -1682,7 +1706,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                         <input
                           value={editDesc}
                           onChange={e => setEditDesc(e.target.value)}
-                          placeholder="Açıklama"
+                          placeholder={isTr ? "Açıklama" : "Description"}
                           className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2 py-0.5 focus:outline-none focus:border-indigo-400 w-48"
                         />
                         <button onClick={() => handleSaveEdit(selectedOrg.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded">
@@ -1694,7 +1718,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                       </div>
                     ) : (
                       <>
-                        <h1 className="text-sm font-bold text-slate-900 truncate">{selectedOrg.name}</h1>
+                        <h1 className="text-sm font-bold text-slate-900 truncate">
+                          {selectedOrg.is_system ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : selectedOrg.name}
+                        </h1>
                         {selectedOrg.description && (
                           <p className="text-[11px] text-slate-500 truncate">{selectedOrg.description}</p>
                         )}
@@ -1705,7 +1731,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                    {selectedOrg.document_count} dok.
+                    {selectedOrg.document_count} {isTr ? 'dok.' : 'docs'}
                   </span>
                   {!selectedOrg.is_system && editingOrg !== selectedOrg.id && (
                     <>
@@ -1743,7 +1769,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   }`}
                 >
                   <Layers className="w-3 h-3" />
-                  Tümü ({currentDocs.length})
+                  {isTr ? 'Tümü' : 'All'} ({currentDocs.length})
                 </button>
 
                 {allFolders.map(folder => {
@@ -1776,7 +1802,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                             ? 'bg-indigo-600 text-white shadow-xs'
                             : 'bg-white text-slate-600 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700'
                         }`}
-                        title={isFolderDropTarget ? `"${draggedDoc?.name}" dosyasını buraya bırakın` : folder}
+                        title={isFolderDropTarget ? (isTr ? `"${draggedDoc?.name}" dosyasını buraya bırakın` : `Drop "${draggedDoc?.name}" here`) : folder}
                       >
                         <Folder className={`w-3 h-3 ${isSelected || isFolderDropTarget ? 'text-white' : 'text-indigo-500'}`} />
                         {folder}
@@ -1792,7 +1818,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                             setFolderToDelete(folder);
                           }}
                           className="ml-0.5 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md opacity-0 group-hover/pill:opacity-100 transition-all cursor-pointer"
-                          title={`"${folder}" klasörünü sil`}
+                          title={isTr ? `"${folder}" klasörünü sil` : `Delete folder "${folder}"`}
                         >
                           <Trash2 className="w-2.5 h-2.5" />
                         </button>
@@ -1828,7 +1854,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                     }`}
                   >
                     <Folder className={`w-3 h-3 ${selectedFolderFilter === '__unfolded__' || dragOverFolder === '__unfolded__' ? 'text-white' : 'text-slate-400'}`} />
-                    <span>Klasörsüz ({currentDocs.filter(d => !d.folder).length})</span>
+                    <span>{isTr ? 'Klasörsüz' : 'Unassigned'} ({currentDocs.filter(d => !d.folder).length})</span>
                   </button>
                 )}
 
@@ -1842,7 +1868,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                       <input
                         value={newFolderName}
                         onChange={e => setNewFolderName(e.target.value)}
-                        placeholder="Klasör adı..."
+                        placeholder={isTr ? "Klasör adı..." : "Folder name..."}
                         className="text-xs px-1.5 py-0.5 focus:outline-none w-28 bg-transparent text-slate-800"
                         autoFocus
                       />
@@ -1856,10 +1882,10 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   ) : (
                     <button
                       onClick={() => setShowAddFolder(true)}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all cursor-pointer"
                     >
                       <FolderPlus className="w-3 h-3" />
-                      + Klasör
+                      + {isTr ? 'Klasör' : 'Folder'}
                     </button>
                   )
                 )}
@@ -1872,7 +1898,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   <input
                     value={docSearch}
                     onChange={e => setDocSearch(e.target.value)}
-                    placeholder="Dosya ara..."
+                    placeholder={isTr ? "Dosya ara..." : "Search files..."}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-indigo-400"
                   />
                 </div>
@@ -1889,8 +1915,8 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                     }`}
                     title={
                       filteredDocs.length > 0 && filteredDocs.every(d => selectedDocNames.includes(d.name))
-                        ? 'Tümünün seçimini kaldır'
-                        : 'Görüntülenen tüm dosyaları seç'
+                        ? (isTr ? 'Tümünün seçimini kaldır' : 'Deselect all')
+                        : (isTr ? 'Görüntülenen tüm dosyaları seç' : 'Select all visible files')
                     }
                   >
                     {filteredDocs.length > 0 && filteredDocs.every(d => selectedDocNames.includes(d.name)) ? (
@@ -1900,10 +1926,10 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                     )}
                     <span>
                       {filteredDocs.length > 0 && filteredDocs.every(d => selectedDocNames.includes(d.name))
-                        ? 'Tümü Seçildi'
+                        ? (isTr ? 'Tümü Seçildi' : 'All Selected')
                         : selectedDocNames.length > 0
-                        ? `Seçildi (${selectedDocNames.length})`
-                        : 'Tümünü Seç'}
+                        ? `${isTr ? 'Seçildi' : 'Selected'} (${selectedDocNames.length})`
+                        : (isTr ? 'Tümünü Seç' : 'Select All')}
                     </span>
                   </button>
                 )}
@@ -1932,7 +1958,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               ) : filteredDocs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-slate-400">
                   <FileText className="w-10 h-10 text-slate-300 mb-2" />
-                  <p className="text-xs font-medium">Bu filtrede doküman bulunamadı</p>
+                  <p className="text-xs font-medium">{isTr ? 'Bu filtrede doküman bulunamadı' : 'No documents found in this filter'}</p>
                 </div>
               ) : (
                 <ExplorerGrid
@@ -1972,7 +1998,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[11px] font-extrabold text-white">
                     {selectedDocNames.length}
                   </div>
-                  <span className="text-xs font-semibold whitespace-nowrap">dosya seçildi</span>
+                  <span className="text-xs font-semibold whitespace-nowrap">
+                    {isTr ? 'dosya seçildi' : (selectedDocNames.length === 1 ? 'file selected' : 'files selected')}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -1983,10 +2011,10 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                       setBatchFolderModal(true);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-indigo-600 text-xs font-semibold transition-colors cursor-pointer"
-                    title="Seçili dosyaları bir klasöre taşı"
+                    title={isTr ? "Seçili dosyaları bir klasöre taşı" : "Move selected files to a folder"}
                   >
                     <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Klasöre Taşı</span>
+                    <span>{isTr ? 'Klasöre Taşı' : 'Move to Folder'}</span>
                   </button>
 
                   <button
@@ -1996,35 +2024,35 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                       setBatchOrgModal(true);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-indigo-600 text-xs font-semibold transition-colors cursor-pointer"
-                    title="Seçili dosyaları başka bir kuruma taşı"
+                    title={isTr ? "Seçili dosyaları başka bir kuruma taşı" : "Move selected files to another portfolio"}
                   >
                     <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Kuruma Taşı</span>
+                    <span>{isTr ? 'Kuruma Taşı' : 'Move to Portfolio'}</span>
                   </button>
 
                   <button
                     onClick={handleBatchDownload}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-emerald-600 text-xs font-semibold transition-colors cursor-pointer"
-                    title="Seçili dosyaları indir"
+                    title={isTr ? "Seçili dosyaları indir" : "Download selected files"}
                   >
                     <Download className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>İndir</span>
+                    <span>{isTr ? 'İndir' : 'Download'}</span>
                   </button>
 
                   <button
                     onClick={() => setBatchDeleteConfirm(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-600 text-xs font-semibold text-red-300 hover:text-white transition-colors cursor-pointer"
-                    title="Seçili dosyaları kalıcı olarak sil"
+                    title={isTr ? "Seçili dosyaları kalıcı olarak sil" : "Permanently delete selected files"}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Sil</span>
+                    <span>{isTr ? 'Sil' : 'Delete'}</span>
                   </button>
                 </div>
 
                 <button
                   onClick={handleClearSelection}
                   className="p-1.5 ml-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-                  title="Seçimi Temizle"
+                  title={isTr ? "Seçimi Temizle" : "Clear Selection"}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -2057,17 +2085,21 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)} />
           <div className="relative bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 w-[360px] max-w-[94vw]">
-            <h3 className="text-sm font-bold text-slate-900 mb-2">Kurumu Sil</h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-2">{isTr ? 'Kurumu Sil' : 'Delete Portfolio'}</h3>
             <p className="text-xs text-slate-500 mb-5">
-              Bu kurumu silmek istediğinize emin misiniz? Dosyalar silinmez, "Genel / Klasörsüzler" grubuna taşınır.
+              {isTr
+                ? 'Bu kurumu silmek istediğinize emin misiniz? Dosyalar silinmez, "Genel / Klasörsüzler" grubuna taşınır.'
+                : 'Are you sure you want to delete this portfolio? Files will not be deleted; they will be moved to "General / Unassigned".'}
             </p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800">İptal</button>
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer">
+                {isTr ? 'İptal' : 'Cancel'}
+              </button>
               <button
                 onClick={() => handleDeleteOrg(deleteConfirm)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition-colors"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
               >
-                Evet, Sil
+                {isTr ? 'Evet, Sil' : 'Yes, Delete'}
               </button>
             </div>
           </div>
@@ -2081,16 +2113,18 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-[500px] max-w-[94vw] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h2 className="text-base font-bold text-slate-900 mb-5 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-indigo-600" />
-              Yeni Kurum / Organizasyon
+              {isTr ? 'Yeni Kurum / Organizasyon' : 'New Portfolio / Organization'}
             </h2>
 
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Kurum Adı *</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                  {isTr ? 'Kurum Adı *' : 'Portfolio Name *'}
+                </label>
                 <input
                   value={newOrgName}
                   onChange={e => setNewOrgName(e.target.value)}
-                  placeholder="örn. Nuran Hanım, Bassel Group"
+                  placeholder={isTr ? 'örn. Nuran Hanım, Bassel Group' : 'e.g. Acme Corp, Investment Portfolio'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
                   autoFocus
                   onKeyDown={e => e.key === 'Enter' && handleCreateOrg()}
@@ -2098,27 +2132,33 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Açıklama</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                  {isTr ? 'Açıklama' : 'Description'}
+                </label>
                 <input
                   value={newOrgDesc}
                   onChange={e => setNewOrgDesc(e.target.value)}
-                  placeholder="örn. Gayrimenkul portföyü ve kira sözleşmeleri"
+                  placeholder={isTr ? 'örn. Gayrimenkul portföyü ve kira sözleşmeleri' : 'e.g. Real estate portfolio & lease agreements'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Başlangıç Klasörleri / Portföyler</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                  {isTr ? 'Başlangıç Klasörleri / Portföyler' : 'Initial Folders / Sub-portfolios'}
+                </label>
                 <input
                   value={newOrgFolders}
                   onChange={e => setNewOrgFolders(e.target.value)}
-                  placeholder="örn. Portföy A, Sözleşmeler, Fotoğraflar (virgülle ayırın)"
+                  placeholder={isTr ? 'örn. Portföy A, Sözleşmeler, Fotoğraflar (virgülle ayırın)' : 'e.g. Folder A, Contracts, Photos (comma separated)'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Renk</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                  {isTr ? 'Renk' : 'Color'}
+                </label>
                 <div className="flex gap-2 flex-wrap">
                   {COLORS.map(c => (
                     <button
@@ -2132,25 +2172,29 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Etiketler</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                  {isTr ? 'Etiketler' : 'Tags'}
+                </label>
                 <input
                   value={newOrgTags}
                   onChange={e => setNewOrgTags(e.target.value)}
-                  placeholder="örn. portfoy, gayrimenkul (virgülle ayırın)"
+                  placeholder={isTr ? 'örn. portfoy, gayrimenkul (virgülle ayırın)' : 'e.g. portfolio, real estate (comma separated)'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
                 />
               </div>
             </div>
 
             <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
-              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800">İptal</button>
+              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer">
+                {isTr ? 'İptal' : 'Cancel'}
+              </button>
               <button
                 onClick={handleCreateOrg}
                 disabled={!newOrgName.trim() || creating}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20"
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20 cursor-pointer"
               >
                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Oluştur
+                {isTr ? 'Oluştur' : 'Create'}
               </button>
             </div>
           </div>
@@ -2164,19 +2208,21 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-[440px] max-w-[94vw] p-6">
             <h2 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
               <FolderOpen className="w-4 h-4 text-indigo-600" />
-              Klasöre / Portföye Taşı
+              {isTr ? 'Klasöre / Portföye Taşı' : 'Move to Folder / Sub-portfolio'}
             </h2>
             <p className="text-[11px] text-slate-400 mb-4 truncate">{moveFolderModal.filename}</p>
 
             {moveFolderModal.availableFolders?.length > 0 && (
               <div className="mb-4">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Mevcut Klasörler</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                  {isTr ? 'Mevcut Klasörler' : 'Existing Folders'}
+                </label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {moveFolderModal.availableFolders.map(folder => (
                     <button
                       key={folder}
                       onClick={() => { setTargetFolderName(folder); setCustomFolderName(''); }}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs text-left transition-all ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs text-left transition-all cursor-pointer ${
                         targetFolderName === folder && !customFolderName
                           ? 'border-indigo-400 bg-indigo-50 text-indigo-900 font-bold'
                           : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
@@ -2193,12 +2239,12 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
 
             <div className="mb-5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                {moveFolderModal.availableFolders?.length > 0 ? 'Veya Yeni Klasör' : 'Klasör Adı'}
+                {moveFolderModal.availableFolders?.length > 0 ? (isTr ? 'Veya Yeni Klasör' : 'Or New Folder') : (isTr ? 'Klasör Adı' : 'Folder Name')}
               </label>
               <input
                 value={customFolderName}
                 onChange={e => { setCustomFolderName(e.target.value); if (e.target.value) setTargetFolderName(''); }}
-                placeholder="örn. Portföy A, Sözleşmeler, 2026 Fotoğrafları"
+                placeholder={isTr ? 'örn. Portföy A, Sözleşmeler, 2026 Fotoğrafları' : 'e.g. Contracts, Invoices, Photos 2026'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
               />
             </div>
@@ -2206,19 +2252,21 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             <div className="flex items-center justify-between pt-3 border-t border-slate-100">
               <button
                 onClick={() => { setTargetFolderName(''); setCustomFolderName(''); handleMoveDocFolder(); }}
-                className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
-                Klasörden Çıkar
+                {isTr ? 'Klasörden Çıkar' : 'Remove from Folder'}
               </button>
               <div className="flex gap-2">
-                <button onClick={() => setMoveFolderModal(null)} className="px-3.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800">İptal</button>
+                <button onClick={() => setMoveFolderModal(null)} className="px-3.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer">
+                  {isTr ? 'İptal' : 'Cancel'}
+                </button>
                 <button
                   onClick={handleMoveDocFolder}
                   disabled={isMovingFolder}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-600/20"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-600/20 cursor-pointer"
                 >
                   {isMovingFolder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
-                  Taşı
+                  {isTr ? 'Taşı' : 'Move'}
                 </button>
               </div>
             </div>
@@ -2233,7 +2281,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-[480px] max-w-[94vw] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h2 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-indigo-600" />
-              Başka Kuruma Taşı
+              {isTr ? 'Başka Kuruma Taşı' : 'Move to Another Portfolio'}
             </h2>
             <p className="text-[11px] text-slate-400 mb-4 truncate">{assignModal.filename}</p>
 
@@ -2242,7 +2290,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 <button
                   key={org.id}
                   onClick={() => setAssignTargetOrg(org.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left cursor-pointer ${
                     assignTargetOrg === org.id
                       ? 'border-indigo-500 bg-indigo-50/70 shadow-xs'
                       : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/70'
@@ -2261,14 +2309,16 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             {/* Folder input for target org */}
             {assignTargetOrg && (
               <div className="mb-3">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Klasör / Portföy (Opsiyonel)</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                  {isTr ? 'Klasör / Portföy (Opsiyonel)' : 'Folder / Sub-portfolio (Optional)'}
+                </label>
                 {organizations.find(o => o.id === assignTargetOrg)?.folders?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {organizations.find(o => o.id === assignTargetOrg)?.folders.map(f => (
                       <button
                         key={f}
                         onClick={() => setAssignFolder(f)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${assignFolder === f ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${assignFolder === f ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                       >
                         📁 {f}
                       </button>
@@ -2278,31 +2328,35 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 <input
                   value={assignFolder}
                   onChange={e => setAssignFolder(e.target.value)}
-                  placeholder="örn. Portföy 1, Sözleşmeler"
+                  placeholder={isTr ? 'örn. Portföy 1, Sözleşmeler' : 'e.g. Portfolio 1, Contracts'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
                 />
               </div>
             )}
 
             <div className="mb-4">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Etiketler</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                {isTr ? 'Etiketler' : 'Tags'}
+              </label>
               <input
                 value={assignTags}
                 onChange={e => setAssignTags(e.target.value)}
-                placeholder="örn. sozlesme, teklif"
+                placeholder={isTr ? 'örn. sozlesme, teklif' : 'e.g. contract, proposal'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
               />
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-              <button onClick={() => setAssignModal(null)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800">İptal</button>
+              <button onClick={() => setAssignModal(null)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer">
+                {isTr ? 'İptal' : 'Cancel'}
+              </button>
               <button
                 onClick={handleAssignDoc}
                 disabled={!assignTargetOrg || assigning}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-600/20"
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-600/20 cursor-pointer"
               >
                 {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                Taşı
+                {isTr ? 'Taşı' : 'Move'}
               </button>
             </div>
           </div>
@@ -2319,29 +2373,31 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center">
                   <MessageSquare className="w-4 h-4 text-emerald-600" />
                 </div>
-                WhatsApp / Portföy Notu Ekle
+                {isTr ? 'WhatsApp / Portföy Notu Ekle' : 'Add WhatsApp / Portfolio Note'}
               </h2>
               <button
                 onClick={() => setShowNoteModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <p className="text-xs text-slate-500 mb-5">
-              WhatsApp sohbet geçmişini, müşteri mesajlarını veya serbest notları yapıştırın. Yapay zeka bu bilgileri RAG sistemi için otomatik indeksler.
+              {isTr
+                ? 'WhatsApp sohbet geçmişini, müşteri mesajlarını veya serbest notları yapıştırın. Yapay zeka bu bilgileri RAG sistemi için otomatik indeksler.'
+                : 'Paste WhatsApp chat history, client messages, or notes. AI will automatically index this information for the RAG system.'}
             </p>
 
             <div className="space-y-4">
               {/* Note title */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  Başlık / Portföy Adı *
+                  {isTr ? 'Başlık / Portföy Adı *' : 'Title / Note Name *'}
                 </label>
                 <input
                   value={noteTitle}
                   onChange={e => setNoteTitle(e.target.value)}
-                  placeholder="örn. Nuran Hanım - Kadıköy 3+1 WhatsApp Sohbeti"
+                  placeholder={isTr ? 'örn. Nuran Hanım - Kadıköy 3+1 WhatsApp Sohbeti' : 'e.g. Client Conversation - Kadıköy Property Note'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                   autoFocus
                 />
@@ -2350,7 +2406,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               {/* Target Organization */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  Kurum / Organizasyon
+                  {isTr ? 'Kurum / Organizasyon' : 'Portfolio / Organization'}
                 </label>
                 <div className="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto custom-scrollbar">
                   {organizations.filter(o => !o.is_system).map(org => (
@@ -2358,7 +2414,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                       key={org.id}
                       type="button"
                       onClick={() => setNoteOrgId(org.id)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs text-left transition-all ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs text-left transition-all cursor-pointer ${
                         noteOrgId === org.id
                           ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold shadow-2xs'
                           : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700'
@@ -2375,7 +2431,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               {/* Target Folder */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  Klasör / Portföy (Opsiyonel)
+                  {isTr ? 'Klasör / Portföy (Opsiyonel)' : 'Folder / Sub-portfolio (Optional)'}
                 </label>
                 {organizations.find(o => o.id === noteOrgId)?.folders?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -2384,7 +2440,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                         key={f}
                         type="button"
                         onClick={() => setNoteFolder(f)}
-                        className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all ${
+                        className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                           noteFolder === f
                             ? 'bg-emerald-600 text-white'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -2398,7 +2454,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 <input
                   value={noteFolder}
                   onChange={e => setNoteFolder(e.target.value)}
-                  placeholder="örn. Portföy A, Görüşmeler, 2026"
+                  placeholder={isTr ? 'örn. Portföy A, Görüşmeler, 2026' : 'e.g. Portfolio A, Meetings, 2026'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -2406,13 +2462,13 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               {/* Content textarea */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  WhatsApp Mesajları / Not Metni *
+                  {isTr ? 'WhatsApp Mesajları / Not Metni *' : 'WhatsApp Messages / Note Text *'}
                 </label>
                 <textarea
                   value={noteContent}
                   onChange={e => setNoteContent(e.target.value)}
                   rows={7}
-                  placeholder="WhatsApp'tan kopyaladığınız mesajları buraya yapıştırın...&#10;&#10;Örnek:&#10;[12.04.2026 14:15] Nuran Hanım: Kadıköy'deki daire için kira 35.000 TL olarak belirlendi. 2 kira depozito isteniyor.&#10;[12.04.2026 14:18] Ben: Randevu ne zaman uygun olur?&#10;[12.04.2026 14:20] Nuran Hanım: Yarın saat 15:00'te mülk sahibiyle görebiliriz."
+                  placeholder={isTr ? "WhatsApp'tan kopyaladığınız mesajları buraya yapıştırın...\n\nÖrnek:\n[12.04.2026 14:15] Nuran Hanım: Kadıköy'deki daire için kira 35.000 TL olarak belirlendi. 2 kira depozito isteniyor.\n[12.04.2026 14:18] Ben: Randevu ne zaman uygun olur?\n[12.04.2026 14:20] Nuran Hanım: Yarın saat 15:00'te mülk sahibiyle görebiliriz." : "Paste messages or notes here...\n\nExample:\n[12.04.2026 14:15] John: Rent is set to $2,500/month. 2 months deposit requested.\n[12.04.2026 14:18] Me: When can we arrange a viewing?\n[12.04.2026 14:20] John: Tomorrow at 3:00 PM works best."}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 font-sans leading-relaxed custom-scrollbar"
                 />
               </div>
@@ -2434,11 +2490,13 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                     <span className="text-xs font-bold text-slate-900">
-                      Yapay Zeka ile Düzenle ve Yapılandır (Önerilen)
+                      {isTr ? 'Yapay Zeka ile Düzenle ve Yapılandır (Önerilen)' : 'Auto-Format & Structure with AI (Recommended)'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 mt-0.5">
-                    Fiyatlar, tarihler, kişi bilgileri, şartlar ve talepleri madde madde net bir portföy özetine dönüştürür; orijinal mesaj metnini de altında saklar.
+                    {isTr
+                      ? 'Fiyatlar, tarihler, kişi bilgileri, şartlar ve talepleri madde madde net bir portföy özetine dönüştürür; orijinal mesaj metnini de altında saklar.'
+                      : 'Converts prices, dates, contacts, and terms into a clean structured summary while preserving the original transcript.'}
                   </p>
                 </div>
               </div>
@@ -2448,9 +2506,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
               <button
                 onClick={() => setShowNoteModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800"
+                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
               >
-                İptal
+                {isTr ? 'İptal' : 'Cancel'}
               </button>
               <button
                 onClick={handleCreateNote}
@@ -2460,12 +2518,12 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 {noteSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Kaydediliyor & İndeksleniyor...</span>
+                    <span>{isTr ? 'Kaydediliyor & İndeksleniyor...' : 'Saving & Indexing...'}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>Notu / Sohbeti Kaydet</span>
+                    <span>{isTr ? 'Notu / Sohbeti Kaydet' : 'Save Note / Chat'}</span>
                   </>
                 )}
               </button>
@@ -2482,25 +2540,27 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-3">
               <Trash2 className="w-5 h-5" />
             </div>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">Dokümanı Sil</h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">{isTr ? 'Dokümanı Sil' : 'Delete Document'}</h3>
             <p className="text-xs text-slate-600 mb-2 font-mono break-all bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               {docToDelete}
             </p>
             <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-              Bu dosya vektör veritabanından, kurum atamasından ve sistem diskinden kalıcı olarak silinecektir. Devam etmek istiyor musunuz?
+              {isTr
+                ? 'Bu dosya vektör veritabanından, kurum atamasından ve sistem diskinden kalıcı olarak silinecektir. Devam etmek istiyor musunuz?'
+                : 'This document will be permanently removed from the vector database, portfolio assignments, and disk storage. Do you wish to proceed?'}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDocToDelete(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
               >
-                İptal
+                {isTr ? 'İptal' : 'Cancel'}
               </button>
               <button
                 onClick={confirmDeleteSingleDoc}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-xs shadow-red-600/20"
               >
-                Evet, Sil
+                {isTr ? 'Evet, Sil' : 'Yes, Delete'}
               </button>
             </div>
           </div>
@@ -2515,27 +2575,36 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
               <Folder className="w-5 h-5" />
             </div>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">Klasörü Sil</h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">{isTr ? 'Klasörü Sil' : 'Delete Folder'}</h3>
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 my-2.5">
               <Folder className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="text-xs font-bold text-slate-800 truncate">{folderToDelete}</span>
             </div>
             <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-              Bu klasörü kaldırmak istediğinize emin misiniz? <br />
-              <strong className="text-slate-700 font-semibold">Dosyalarınız silinmez</strong>, sadece bu klasörden çıkarılarak <em>Genel (Klasörsüz)</em> bölümüne aktarılır.
+              {isTr ? (
+                <>
+                  Bu klasörü kaldırmak istediğinize emin misiniz? <br />
+                  <strong className="text-slate-700 font-semibold">Dosyalarınız silinmez</strong>, sadece bu klasörden çıkarılarak <em>Genel (Klasörsüz)</em> bölümüne aktarılır.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to remove this folder? <br />
+                  <strong className="text-slate-700 font-semibold">Your files will not be deleted</strong>, they will simply be moved to the <em>General (Unassigned)</em> section.
+                </>
+              )}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setFolderToDelete(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
               >
-                İptal
+                {isTr ? 'İptal' : 'Cancel'}
               </button>
               <button
                 onClick={confirmDeleteFolder}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-xs shadow-red-600/20"
               >
-                Evet, Klasörü Sil
+                {isTr ? 'Evet, Klasörü Sil' : 'Yes, Delete Folder'}
               </button>
             </div>
           </div>
@@ -2551,10 +2620,12 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               <Trash2 className="w-5 h-5" />
             </div>
             <h3 className="text-sm font-bold text-slate-900 mb-1">
-              {selectedDocNames.length} Dokümanı Toplu Sil
+              {isTr ? `${selectedDocNames.length} Dokümanı Toplu Sil` : `Batch Delete ${selectedDocNames.length} Documents`}
             </h3>
             <p className="text-xs text-slate-500 mb-3">
-              Seçilen aşağıdaki {selectedDocNames.length} adet doküman vektör veritabanından ve diskten kalıcı olarak silinecektir:
+              {isTr
+                ? `Seçilen aşağıdaki ${selectedDocNames.length} adet doküman vektör veritabanından ve diskten kalıcı olarak silinecektir:`
+                : `The following ${selectedDocNames.length} selected document(s) will be permanently deleted from the vector database and disk:`}
             </p>
             <div className="max-h-36 overflow-y-auto mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-[11px] text-slate-700 font-mono custom-scrollbar">
               {selectedDocNames.map(name => (
@@ -2566,7 +2637,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 onClick={() => setBatchDeleteConfirm(false)}
                 className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
               >
-                İptal
+                {isTr ? 'İptal' : 'Cancel'}
               </button>
               <button
                 onClick={confirmBatchDelete}
@@ -2574,7 +2645,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-xs shadow-red-600/20"
               >
                 {isBatchOperating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                Evet, Hepsini Sil
+                {isTr ? 'Evet, Hepsini Sil' : 'Yes, Delete All'}
               </button>
             </div>
           </div>
@@ -2588,16 +2659,16 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-[460px] max-w-[94vw] p-6">
             <h2 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
               <FolderOpen className="w-4 h-4 text-indigo-600" />
-              {selectedDocNames.length} Dokümanı Klasöre Taşı
+              {isTr ? `${selectedDocNames.length} Dokümanı Klasöre Taşı` : `Move ${selectedDocNames.length} Documents to Folder`}
             </h2>
             <p className="text-xs text-slate-500 mb-4">
-              Seçilen dosyaları bir klasöre taşıyın veya genel klasörsüz bölüme alın.
+              {isTr ? 'Seçilen dosyaları bir klasöre taşıyın veya genel klasörsüz bölüme alın.' : 'Move selected files to a folder or leave them unassigned.'}
             </p>
 
             {allFolders.length > 0 && (
               <div className="mb-4">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
-                  Mevcut Klasörler
+                  {isTr ? 'Mevcut Klasörler' : 'Existing Folders'}
                 </label>
                 <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto custom-scrollbar">
                   {allFolders.map(folder => (
@@ -2622,12 +2693,12 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
 
             <div className="mb-5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                {allFolders.length > 0 ? 'Veya Yeni Klasör Oluştur' : 'Klasör Adı'}
+                {allFolders.length > 0 ? (isTr ? 'Veya Yeni Klasör Oluştur' : 'Or Create New Folder') : (isTr ? 'Klasör Adı' : 'Folder Name')}
               </label>
               <input
                 value={batchCustomFolder}
                 onChange={e => { setBatchCustomFolder(e.target.value); if (e.target.value) setBatchTargetFolder(''); }}
-                placeholder="örn. Portföy A, Sözleşmeler, 2026"
+                placeholder={isTr ? 'örn. Portföy A, Sözleşmeler, 2026' : 'e.g. Portfolio A, Contracts, 2026'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
               />
             </div>
@@ -2637,11 +2708,11 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 onClick={() => { setBatchTargetFolder(''); setBatchCustomFolder(''); handleBatchMoveFolder(); }}
                 className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
-                Klasörden Çıkar (Genel)
+                {isTr ? 'Klasörden Çıkar (Genel)' : 'Remove from Folder (General)'}
               </button>
               <div className="flex gap-2">
                 <button onClick={() => setBatchFolderModal(false)} className="px-3.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer">
-                  İptal
+                  {isTr ? 'İptal' : 'Cancel'}
                 </button>
                 <button
                   onClick={handleBatchMoveFolder}
@@ -2649,7 +2720,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-600/20 cursor-pointer"
                 >
                   {isBatchOperating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
-                  Taşı
+                  {isTr ? 'Taşı' : 'Move'}
                 </button>
               </div>
             </div>
@@ -2664,10 +2735,10 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-[480px] max-w-[94vw] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h2 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-indigo-600" />
-              {selectedDocNames.length} Dokümanı Başka Kuruma Taşı
+              {isTr ? `${selectedDocNames.length} Dokümanı Başka Kuruma Taşı` : `Move ${selectedDocNames.length} Documents to Another Portfolio`}
             </h2>
             <p className="text-xs text-slate-500 mb-4">
-              Seçilen {selectedDocNames.length} dokümanı hedef kuruma aktarın.
+              {isTr ? `Seçilen ${selectedDocNames.length} dokümanı hedef kuruma aktarın.` : `Move the ${selectedDocNames.length} selected document(s) to the destination portfolio.`}
             </p>
 
             <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar mb-4">
@@ -2696,7 +2767,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             {batchTargetOrgId && (
               <div className="mb-4">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                  Hedef Klasör / Portföy (Opsiyonel)
+                  {isTr ? 'Hedef Klasör / Portföy (Opsiyonel)' : 'Target Folder / Sub-portfolio (Optional)'}
                 </label>
                 {organizations.find(o => o.id === batchTargetOrgId)?.folders?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
@@ -2717,7 +2788,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 <input
                   value={batchTargetFolder}
                   onChange={e => setBatchTargetFolder(e.target.value)}
-                  placeholder="örn. Portföy 1, Sözleşmeler"
+                  placeholder={isTr ? 'örn. Portföy 1, Sözleşmeler' : 'e.g. Portfolio 1, Contracts'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
                 />
               </div>
@@ -2725,15 +2796,15 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
               <button onClick={() => setBatchOrgModal(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer">
-                İptal
+                {isTr ? 'İptal' : 'Cancel'}
               </button>
               <button
                 onClick={handleBatchMoveOrg}
                 disabled={!batchTargetOrgId || isBatchOperating}
                 className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-sm shadow-indigo-600/20 cursor-pointer"
               >
-                {isBatchOperating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                Taşı
+                {isBatchOperating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                {isTr ? 'Taşı' : 'Move'}
               </button>
             </div>
           </div>

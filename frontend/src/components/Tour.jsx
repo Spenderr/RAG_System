@@ -1,55 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Sparkles, ArrowRight, X, Upload, ClipboardList, Eraser, Scissors, Database } from 'lucide-react';
-
-const TOUR_STEPS = [
-  {
-    icon: Upload,
-    title: 'Upload & Ingest',
-    subtitle: 'Step 1 of 5',
-    description: 'Upload your PDF, TXT, or PNG/JPG image documents. Drag & drop or click to browse files.',
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-  },
-  {
-    icon: ClipboardList,
-    title: 'Queue & Extraction',
-    subtitle: 'Step 2 of 5',
-    description: 'Your document is queued for processing. Multimodal AI extracts full text, tables, and notes.',
-    color: 'text-violet-600',
-    bg: 'bg-violet-50',
-    border: 'border-violet-200',
-  },
-  {
-    icon: Eraser,
-    title: 'Clean & Partition',
-    subtitle: 'Step 3 of 5',
-    description: 'Text is parsed, soft wraps are repaired, and citations/noise are removed for higher retrieval quality.',
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-  },
-  {
-    icon: Scissors,
-    title: 'Semantic Section Chunking',
-    subtitle: 'Step 4 of 5',
-    description: 'The cleaned text is split into title- and paragraph-aware semantic chunks without splitting mid-sentence.',
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-  },
-  {
-    icon: Database,
-    title: 'Embed, Ground & Organize',
-    subtitle: 'Step 5 of 5',
-    description: 'Chunks are converted to OpenAI vector embeddings in ChromaDB and automatically grouped into organizations.',
-    color: 'text-indigo-600',
-    bg: 'bg-indigo-50',
-    border: 'border-indigo-200',
-  },
-];
+import { useLanguage } from '../context/LanguageContext';
 
 const Tour = ({ onClose }) => {
+  const { language, t } = useLanguage();
+  const isTr = language === 'tr';
+
+  const TOUR_STEPS = useMemo(() => {
+    if (isTr) {
+      return [
+        {
+          icon: Upload,
+          title: 'Yükleme & Alma',
+          subtitle: 'Adım 1 / 5',
+          description: 'PDF, TXT veya PNG/JPG görsel evraklarınızı yükleyin. Sürükleyip bırakın veya dosyaları seçin.',
+          color: 'text-blue-600',
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+        },
+        {
+          icon: ClipboardList,
+          title: 'Kuyruk & Metin Çıkarma',
+          subtitle: 'Adım 2 / 5',
+          description: 'Belgeniz işleme alınır. Multimodal AI ve Vision OCR ile metinler, tablolar ve notlar eksiksiz okunur.',
+          color: 'text-violet-600',
+          bg: 'bg-violet-50',
+          border: 'border-violet-200',
+        },
+        {
+          icon: Eraser,
+          title: 'Temizleme & Ayrıştırma',
+          subtitle: 'Adım 3 / 5',
+          description: 'Satır kırılmaları düzeltilir, gürültüler ayıklanır ve yüksek arama doğruluğu için optimize edilir.',
+          color: 'text-amber-600',
+          bg: 'bg-amber-50',
+          border: 'border-amber-200',
+        },
+        {
+          icon: Scissors,
+          title: 'Semantik Parçalama',
+          subtitle: 'Adım 4 / 5',
+          description: 'Metin, başlık ve paragraf bütünlüğü bozulmadan anlamlı semantik parçalara (chunks) bölünür.',
+          color: 'text-emerald-600',
+          bg: 'bg-emerald-50',
+          border: 'border-emerald-200',
+        },
+        {
+          icon: Database,
+          title: 'Vektörleme & Kurum Eşleştirme',
+          subtitle: 'Adım 5 / 5',
+          description: 'Parçalar ChromaDB vektör deposuna gömülür ve otomatik olarak ilgili kurum ve klasöre yerleştirilir.',
+          color: 'text-indigo-600',
+          bg: 'bg-indigo-50',
+          border: 'border-indigo-200',
+        },
+      ];
+    }
+    return [
+      {
+        icon: Upload,
+        title: 'Upload & Ingest',
+        subtitle: 'Step 1 of 5',
+        description: 'Upload your PDF, TXT, or PNG/JPG image documents. Drag & drop or click to browse files.',
+        color: 'text-blue-600',
+        bg: 'bg-blue-50',
+        border: 'border-blue-200',
+      },
+      {
+        icon: ClipboardList,
+        title: 'Queue & Extraction',
+        subtitle: 'Step 2 of 5',
+        description: 'Your document is queued for processing. Multimodal AI extracts full text, tables, and notes.',
+        color: 'text-violet-600',
+        bg: 'bg-violet-50',
+        border: 'border-violet-200',
+      },
+      {
+        icon: Eraser,
+        title: 'Clean & Partition',
+        subtitle: 'Step 3 of 5',
+        description: 'Text is parsed, soft wraps are repaired, and citations/noise are removed for higher retrieval quality.',
+        color: 'text-amber-600',
+        bg: 'bg-amber-50',
+        border: 'border-amber-200',
+      },
+      {
+        icon: Scissors,
+        title: 'Semantic Section Chunking',
+        subtitle: 'Step 4 of 5',
+        description: 'The cleaned text is split into title- and paragraph-aware semantic chunks without splitting mid-sentence.',
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-50',
+        border: 'border-emerald-200',
+      },
+      {
+        icon: Database,
+        title: 'Embed, Ground & Organize',
+        subtitle: 'Step 5 of 5',
+        description: 'Chunks are converted to OpenAI vector embeddings in ChromaDB and automatically grouped into organizations.',
+        color: 'text-indigo-600',
+        bg: 'bg-indigo-50',
+        border: 'border-indigo-200',
+      },
+    ];
+  }, [language]);
   const [currentStep, setCurrentStep] = useState(0);
   const [animDir, setAnimDir] = useState('in');
 
@@ -104,7 +158,7 @@ const Tour = ({ onClose }) => {
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="w-4 h-4 text-indigo-600" />
             <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">
-              Processing Pipeline Tour
+              {isTr ? 'İşleme Hattı Tanıtım Turu' : 'Processing Pipeline Tour'}
             </span>
           </div>
 
@@ -162,16 +216,16 @@ const Tour = ({ onClose }) => {
             {currentStep > 0 && (
               <button
                 onClick={goBack}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               >
-                Back
+                {isTr ? 'Geri' : 'Back'}
               </button>
             )}
             <button
               onClick={goNext}
-              className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20"
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20 cursor-pointer"
             >
-              {isLast ? 'Get Started' : 'Next'}
+              {isLast ? (isTr ? 'Başlayalım' : 'Get Started') : (isTr ? 'İleri' : 'Next')}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

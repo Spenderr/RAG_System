@@ -5,8 +5,11 @@ import {
   Building2, Tag, FolderOpen, Filter, Check, Loader2,
   Image as ImageIcon, Plus
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled }) => {
+  const { language, t } = useLanguage();
+  const isTr = language === 'tr';
   const [documents, setDocuments] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [search, setSearch] = useState('');
@@ -243,9 +246,9 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
       {/* ═══ Header ═══ */}
       <div className="p-6 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-2xs">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Documents Library</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">{t('docsPageTitle')}</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Browse, inspect, and manage indexed files and knowledge vectors
+            {t('docsPageSubtitle')}
           </p>
         </div>
 
@@ -257,12 +260,16 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
               onChange={(e) => setSelectedOrgFilter(e.target.value)}
               className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 font-medium focus:outline-none focus:border-indigo-500 appearance-none pr-8 cursor-pointer shadow-2xs"
             >
-              <option value="all">All Organizations</option>
-              {organizations.map(org => (
-                <option key={org.id} value={org.id}>
-                  {org.name} ({org.document_count || 0})
-                </option>
-              ))}
+              <option value="all">{t('allOrgsFilter')}</option>
+              {organizations.map(org => {
+                const isUnassigned = org.id === '__unassigned__' || org.is_system;
+                const displayName = isUnassigned ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : org.name;
+                return (
+                  <option key={org.id} value={org.id}>
+                    {displayName} ({org.document_count || 0})
+                  </option>
+                );
+              })}
             </select>
             <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -274,15 +281,15 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search documents, tags..."
+              placeholder={isTr ? "Doküman, etiket veya dosya ara..." : "Search documents, tags..."}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 shadow-2xs"
             />
           </div>
 
           <button
             onClick={() => { fetchDocuments(); fetchOrganizations(); }}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors shadow-2xs"
-            title="Refresh list"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors shadow-2xs cursor-pointer"
+            title={isTr ? "Listeyi Yenile" : "Refresh list"}
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-indigo-600' : ''}`} />
           </button>
@@ -298,8 +305,8 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
         ) : filteredDocs.length === 0 ? (
           <div className="h-72 flex flex-col items-center justify-center text-slate-400 bg-white border border-dashed border-slate-200 rounded-3xl max-w-2xl mx-auto shadow-2xs">
             <BookOpen className="w-12 h-12 mb-3 text-slate-300" />
-            <p className="text-sm font-bold text-slate-700">No documents found</p>
-            <p className="text-xs text-slate-400 mt-1">Upload a PDF, TXT, or PNG in the Upload & Chat tab to get started.</p>
+            <p className="text-sm font-bold text-slate-700">{isTr ? 'Doküman bulunamadı' : 'No documents found'}</p>
+            <p className="text-xs text-slate-400 mt-1">{isTr ? 'Başlamak için Yükle & Sohbet sekmesinden PDF, TXT veya görsel yükleyin.' : 'Upload a PDF, TXT, or image in the Upload & Chat tab to get started.'}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full max-w-6xl">
@@ -307,7 +314,8 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
               const ext = doc.name.split('.').pop().toUpperCase();
               const isPdf = ext.toLowerCase() === 'pdf';
               const isImg = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP'].includes(ext);
-              const orgName = doc.org_name || 'Unassigned';
+              const isUnassigned = !doc.org_id || doc.org_id === '__unassigned__' || doc.org_name === 'Genel / Klasörsüzler';
+              const orgName = isUnassigned ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : (doc.org_name || (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned'));
               const orgColor = doc.org_color || '#6b7280';
 
               return (
@@ -335,13 +343,13 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                         {/* Organization Badge Button */}
                         <button
                           onClick={() => handleOpenAssign(doc)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all hover:scale-105"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all hover:scale-105 cursor-pointer"
                           style={{
                             backgroundColor: `${orgColor}15`,
                             color: orgColor,
                             border: `1px solid ${orgColor}35`,
                           }}
-                          title="Click to assign or move organization"
+                          title={isTr ? "Kurum atamak veya taşımak için tıklayın" : "Click to assign or move portfolio"}
                         >
                           <Building2 className="w-3 h-3" />
                           <span className="truncate max-w-[130px]">{orgName}</span>
@@ -351,7 +359,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                         {doc.folder && (
                           <span
                             className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80 max-w-[130px] truncate"
-                            title={`Klasör / Portföy: ${doc.folder}`}
+                            title={isTr ? `Klasör / Portföy: ${doc.folder}` : `Folder / Portfolio: ${doc.folder}`}
                           >
                             📁 {doc.folder}
                           </span>
@@ -362,22 +370,22 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                         <div className="flex items-center gap-1.5 animate-[fadeIn_0.2s_ease-out]">
                           <button
                             onClick={() => handleDelete(doc.name)}
-                            className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs"
+                            className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs cursor-pointer"
                           >
-                            Delete
+                            {isTr ? 'Sil' : 'Delete'}
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(null)}
-                            className="px-2.5 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold"
+                            className="px-2.5 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
                           >
-                            Cancel
+                            {isTr ? 'İptal' : 'Cancel'}
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => setDeleteConfirm(doc.name)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors opacity-70 group-hover:opacity-100"
-                          title="Delete document and vectors"
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors opacity-70 group-hover:opacity-100 cursor-pointer"
+                          title={isTr ? "Dokümanı ve vektörleri sil" : "Delete document and vectors"}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -403,13 +411,17 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                     {/* Metrics Cards */}
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/80">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-0.5">Chunks</span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-0.5">
+                          {isTr ? 'Parçalar' : 'Chunks'}
+                        </span>
                         <span className="text-base font-bold text-indigo-600 flex items-center gap-1.5 font-mono">
                           <Database className="w-3.5 h-3.5" /> {doc.chunk_count || 0}
                         </span>
                       </div>
                       <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/80">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-0.5">Characters</span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-0.5">
+                          {isTr ? 'Karakter' : 'Characters'}
+                        </span>
                         <span className="text-base font-bold text-slate-900 font-mono block whitespace-nowrap">
                           {(doc.char_count || 0).toLocaleString()}
                         </span>
@@ -421,16 +433,16 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                   <div className="flex items-center gap-2 pt-3.5 border-t border-slate-100">
                     <button
                       onClick={() => handleOpenReader(doc.name)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm shadow-indigo-600/20"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm shadow-indigo-600/20 cursor-pointer"
                     >
                       <Eye className="w-4 h-4" />
-                      <span>Read / View</span>
+                      <span>{isTr ? 'Oku / İncele' : 'Read / View'}</span>
                     </button>
 
                     <button
                       onClick={() => handleOpenAssign(doc)}
-                      className="p-2.5 rounded-xl text-xs font-medium bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border border-slate-200 transition-colors"
-                      title="Assign / Move organization"
+                      className="p-2.5 rounded-xl text-xs font-medium bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border border-slate-200 transition-colors cursor-pointer"
+                      title={isTr ? "Kurum / Klasör Ata" : "Assign / Move portfolio"}
                     >
                       <FolderOpen className="w-4 h-4" />
                     </button>
@@ -438,8 +450,8 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                     <button
                       onClick={() => handleReprocess(doc.name)}
                       disabled={reprocessingDoc === doc.name}
-                      className="p-2.5 rounded-xl text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 disabled:opacity-50 transition-colors"
-                      title="Re-chunk with sentence and paragraph preservation"
+                      className="p-2.5 rounded-xl text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 disabled:opacity-50 transition-colors cursor-pointer"
+                      title={isTr ? "Cümle ve paragraf bütünlüğünü koruyarak yeniden indeksle" : "Re-chunk with sentence and paragraph preservation"}
                     >
                       <RefreshCw className={`w-4 h-4 ${reprocessingDoc === doc.name ? 'animate-spin text-indigo-600' : ''}`} />
                     </button>
@@ -447,10 +459,10 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                     {onSelectDocForInspector && (
                       <button
                         onClick={() => onSelectDocForInspector(doc.name)}
-                        className="flex items-center justify-center gap-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors"
-                        title="Inspect chunks for this document"
+                        className="flex items-center justify-center gap-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors cursor-pointer"
+                        title={isTr ? "Bu dokümanın parçalarını incele" : "Inspect chunks for this document"}
                       >
-                        <span>Chunks</span>
+                        <span>{isTr ? 'Parçalar' : 'Chunks'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -469,21 +481,25 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
           <div className="relative bg-white border border-slate-200 rounded-3xl shadow-2xl w-[520px] max-w-[94vw] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h2 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
               <FolderOpen className="w-5 h-5 text-indigo-600" />
-              Assign Organization & Tags
+              {isTr ? 'Kurum & Etiket Ata' : 'Assign Portfolio & Tags'}
             </h2>
             <p className="text-xs text-slate-500 mb-4 truncate">
-              Document: <span className="text-slate-800 font-semibold">{assignModalDoc.name}</span>
+              {isTr ? 'Doküman:' : 'Document:'} <span className="text-slate-800 font-semibold">{assignModalDoc.name}</span>
             </p>
 
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                {showCreateInlineInDocs ? 'New Organization Details' : 'Select Organization'}
+                {showCreateInlineInDocs
+                  ? (isTr ? 'Yeni Kurum Detayları' : 'New Portfolio Details')
+                  : (isTr ? 'Kurum Seçin' : 'Select Portfolio')}
               </span>
               <button
                 onClick={() => setShowCreateInlineInDocs(!showCreateInlineInDocs)}
-                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 transition-colors"
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               >
-                {showCreateInlineInDocs ? '← Back to List' : '+ Create New Organization'}
+                {showCreateInlineInDocs
+                  ? (isTr ? '← Listeye Dön' : '← Back to List')
+                  : (isTr ? '+ Yeni Kurum Oluştur' : '+ Create New Portfolio')}
               </button>
             </div>
 
@@ -491,12 +507,12 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5 mb-4">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1 block">
-                    Organization Name *
+                    {isTr ? 'Kurum Adı *' : 'Portfolio Name *'}
                   </label>
                   <input
                     value={inlineDocOrgName}
                     onChange={(e) => setInlineDocOrgName(e.target.value)}
-                    placeholder="e.g. Acme Corp, Hotel Group"
+                    placeholder={isTr ? 'örn. Nuran Hanım, Bassel Group' : 'e.g. Acme Corp, Hotel Group'}
                     className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 shadow-2xs"
                     autoFocus
                   />
@@ -504,19 +520,19 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1 block">
-                    Description (optional)
+                    {isTr ? 'Açıklama (opsiyonel)' : 'Description (optional)'}
                   </label>
                   <input
                     value={inlineDocOrgDesc}
                     onChange={(e) => setInlineDocOrgDesc(e.target.value)}
-                    placeholder="e.g. Real estate and hotel properties"
+                    placeholder={isTr ? 'örn. Gayrimenkul portföyü ve otel sözleşmeleri' : 'e.g. Real estate and hotel properties'}
                     className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 shadow-2xs"
                   />
                 </div>
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1 block">
-                    Color Badge
+                    {isTr ? 'Renk' : 'Color Badge'}
                   </label>
                   <div className="flex gap-2 flex-wrap">
                     {['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'].map(c => (
@@ -524,7 +540,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                         key={c}
                         type="button"
                         onClick={() => setInlineDocOrgColor(c)}
-                        className={`w-6 h-6 rounded-lg transition-all ${inlineDocOrgColor === c ? 'ring-2 ring-indigo-600 scale-110' : 'hover:scale-105'}`}
+                        className={`w-6 h-6 rounded-lg transition-all cursor-pointer ${inlineDocOrgColor === c ? 'ring-2 ring-indigo-600 scale-110' : 'hover:scale-105'}`}
                         style={{ backgroundColor: c }}
                       />
                     ))}
@@ -534,43 +550,49 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                 <div className="pt-2 flex justify-end gap-2">
                   <button
                     onClick={() => setShowCreateInlineInDocs(false)}
-                    className="px-3.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {isTr ? 'İptal' : 'Cancel'}
                   </button>
                   <button
                     onClick={handleCreateAndAssignInDocModal}
                     disabled={!inlineDocOrgName.trim() || isAssigning}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20 cursor-pointer"
                   >
                     {isAssigning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    Create & Assign
+                    {isTr ? 'Oluştur & Ata' : 'Create & Assign'}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar mb-4">
-                {organizations.map(org => (
-                  <button
-                    key={org.id}
-                    onClick={() => setTargetOrgId(org.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left ${
-                      targetOrgId === org.id
-                        ? 'border-indigo-500 bg-indigo-50/70 shadow-xs'
-                        : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/70'
-                    }`}
-                  >
-                    <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: org.color }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-slate-800 truncate">{org.name}</div>
-                      {org.description && (
-                        <div className="text-[10px] text-slate-500 truncate">{org.description}</div>
-                      )}
-                    </div>
-                    <span className="text-[10px] font-mono text-slate-400">{org.document_count || 0} docs</span>
-                    {targetOrgId === org.id && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
-                  </button>
-                ))}
+                {organizations.map(org => {
+                  const isUnassigned = org.id === '__unassigned__' || org.is_system;
+                  const displayName = isUnassigned ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : org.name;
+                  return (
+                    <button
+                      key={org.id}
+                      onClick={() => setTargetOrgId(org.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left cursor-pointer ${
+                        targetOrgId === org.id
+                          ? 'border-indigo-500 bg-indigo-50/70 shadow-xs'
+                          : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: org.color }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-slate-800 truncate">{displayName}</div>
+                        {org.description && (
+                          <div className="text-[10px] text-slate-500 truncate">{org.description}</div>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {org.document_count || 0} {isTr ? 'dok.' : 'docs'}
+                      </span>
+                      {targetOrgId === org.id && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -579,16 +601,16 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>📁 Folder / Portfolio</span>
-                    <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                    <span>📁 {isTr ? 'Klasör / Portföy' : 'Folder / Portfolio'}</span>
+                    <span className="text-slate-400 font-normal lowercase">{isTr ? '(opsiyonel)' : '(optional)'}</span>
                   </label>
                   {docFolder && (
                     <button
                       type="button"
                       onClick={() => setDocFolder('')}
-                      className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                      className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                     >
-                      Clear
+                      {isTr ? 'Temizle' : 'Clear'}
                     </button>
                   )}
                 </div>
@@ -603,7 +625,7 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                           key={fld}
                           type="button"
                           onClick={() => setDocFolder(fld)}
-                          className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${
+                          className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-all cursor-pointer ${
                             docFolder === fld
                               ? 'bg-indigo-600 text-white shadow-xs'
                               : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -618,18 +640,20 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                 <input
                   value={docFolder}
                   onChange={(e) => setDocFolder(e.target.value)}
-                  placeholder="e.g. Portfolio A, Contracts, Photos or new folder..."
+                  placeholder={isTr ? 'örn. Portföy A, Sözleşmeler, Fotoğraflar...' : 'e.g. Portfolio A, Contracts, Photos or new folder...'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 shadow-2xs"
                 />
               </div>
             )}
 
             <div className="mb-4">
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Tags (comma-separated)</label>
+              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
+                {isTr ? 'Etiketler (virgülle ayırın)' : 'Tags (comma-separated)'}
+              </label>
               <input
                 value={assignTags}
                 onChange={(e) => setAssignTags(e.target.value)}
-                placeholder="e.g. contract, proposal, 2026"
+                placeholder={isTr ? 'örn. sozlesme, teklif, 2026' : 'e.g. contract, proposal, 2026'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 shadow-2xs"
               />
             </div>
@@ -637,18 +661,18 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
               <button
                 onClick={() => setAssignModalDoc(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               >
-                Cancel
+                {isTr ? 'İptal' : 'Cancel'}
               </button>
               {!showCreateInlineInDocs && (
                 <button
                   onClick={handleSaveAssign}
                   disabled={!targetOrgId || isAssigning}
-                  className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20"
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-600/20 cursor-pointer"
                 >
                   {isAssigning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  Save Changes
+                  {isTr ? 'Değişiklikleri Kaydet' : 'Save Changes'}
                 </button>
               )}
             </div>
@@ -679,7 +703,9 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                 </div>
                 <div className="truncate">
                   <h3 className="font-bold text-sm text-slate-900 truncate">{selectedReaderDoc}</h3>
-                  <span className="text-[11px] font-medium text-slate-400">Document Reader & OCR Inspector</span>
+                  <span className="text-[11px] font-medium text-slate-400">
+                    {isTr ? 'Doküman Okuyucu & OCR İnceleyici' : 'Document Reader & OCR Inspector'}
+                  </span>
                 </div>
               </div>
 
@@ -689,23 +715,23 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                   <div className="flex bg-slate-100 rounded-xl p-1 border border-slate-200">
                     <button
                       onClick={() => setReaderMode('pdf')}
-                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all ${
+                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
                         readerMode === 'pdf'
                           ? 'bg-white text-indigo-600 shadow-xs'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      PDF View
+                      {isTr ? 'PDF Görünümü' : 'PDF View'}
                     </button>
                     <button
                       onClick={() => setReaderMode('text')}
-                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all ${
+                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
                         readerMode === 'text'
                           ? 'bg-white text-indigo-600 shadow-xs'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      Text View
+                      {isTr ? 'Metin Görünümü' : 'Text View'}
                     </button>
                   </div>
                 )}
@@ -714,39 +740,39 @@ const Documents = ({ onSelectDocForInspector, openReaderDoc, onReaderDocHandled 
                   <div className="flex bg-slate-100 rounded-xl p-1 border border-slate-200">
                     <button
                       onClick={() => setReaderMode('image')}
-                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all ${
+                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
                         readerMode === 'image'
                           ? 'bg-white text-emerald-600 shadow-xs'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      Image View
+                      {isTr ? 'Görsel Görünümü' : 'Image View'}
                     </button>
                     <button
                       onClick={() => setReaderMode('text')}
-                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all ${
+                      className={`px-3 py-1.5 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
                         readerMode === 'text'
                           ? 'bg-white text-indigo-600 shadow-xs'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      OCR Text View
+                      {isTr ? 'OCR Metin Görünümü' : 'OCR Text View'}
                     </button>
                   </div>
                 )}
 
                 <button
                   onClick={() => setIsFullScreen(!isFullScreen)}
-                  className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
-                  title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
+                  className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  title={isFullScreen ? (isTr ? "Tam Ekrandan Çık" : "Exit Fullscreen") : (isTr ? "Tam Ekran" : "Fullscreen")}
                 >
                   {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
 
                 <button
                   onClick={handleCloseReader}
-                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                  title="Close (ESC)"
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                  title={isTr ? "Kapat (ESC)" : "Close (ESC)"}
                 >
                   <X className="w-4 h-4" />
                 </button>

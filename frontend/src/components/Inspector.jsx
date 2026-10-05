@@ -5,8 +5,11 @@ import {
   ChevronRight, GripVertical, Building2, Sparkles, Play, ArrowRight,
   Zap, Copy, Check, ExternalLink
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const Inspector = ({ initialSelectedDocName, traceInfo }) => {
+  const { language, t } = useLanguage();
+  const isTr = language === 'tr';
   const [documents, setDocuments] = useState([]);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [chunks, setChunks] = useState([]);
@@ -295,11 +298,11 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
           className="border-r border-slate-200 bg-white flex flex-col shrink-0 overflow-hidden shadow-2xs"
         >
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Documents</h2>
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isTr ? 'Dokümanlar' : 'Documents'}</h2>
             <button
               onClick={() => setIsLeftCollapsed(true)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-              title="Collapse Panel"
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              title={isTr ? "Paneli Daralt" : "Collapse Panel"}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -308,7 +311,7 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
             {documents.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-xs font-medium">
-                No documents
+                {isTr ? 'Henüz doküman yok' : 'No documents'}
               </div>
             ) : (
               documents.map((doc) => (
@@ -406,7 +409,9 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                       }}
                     >
                       <Building2 className="w-2.5 h-2.5" />
-                      {selectedDoc.org_name}
+                      {selectedDoc.org_name === 'Genel / Klasörsüzler' || selectedDoc.org_id === '__unassigned__'
+                        ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned')
+                        : selectedDoc.org_name}
                     </span>
                   )}
                 </div>
@@ -414,10 +419,10 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                 {!showDocViewer && (
                   <button
                     onClick={() => setShowDocViewer(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold shrink-0 transition-colors border border-indigo-200"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold shrink-0 transition-colors border border-indigo-200 cursor-pointer"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
-                    <span>Open Viewer</span>
+                    <span>{isTr ? 'Görüntüleyiciyi Aç' : 'Open Viewer'}</span>
                   </button>
                 )}
               </div>
@@ -429,7 +434,7 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter chunks by keyword..."
+                  placeholder={isTr ? "Parçaları anahtar kelimeye göre filtrele..." : "Filter chunks by keyword..."}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-8 pr-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 shadow-2xs"
                 />
               </div>
@@ -438,15 +443,15 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] text-slate-700 font-mono">
                   <Hash className="w-3 h-3 text-blue-600" />
-                  <strong className="text-slate-900">{totalChunks}</strong> chunks
+                  <strong className="text-slate-900">{totalChunks}</strong> {isTr ? 'parça' : 'chunks'}
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] text-slate-700 font-mono">
                   <AlignLeft className="w-3 h-3 text-purple-600" />
-                  <strong className="text-slate-900">{avgLength}</strong> avg len
+                  <strong className="text-slate-900">{avgLength}</strong> {isTr ? 'ort. boy' : 'avg len'}
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] text-slate-700 font-mono">
                   <Database className="w-3 h-3 text-emerald-600" />
-                  <strong className="text-slate-900">{totalChars.toLocaleString()}</strong> chars
+                  <strong className="text-slate-900">{totalChars.toLocaleString()}</strong> {isTr ? 'karakter' : 'chars'}
                 </span>
               </div>
             </div>
@@ -462,7 +467,7 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                 </div>
               ) : chunks.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 text-xs font-medium">
-                  No chunks match your search criteria.
+                  {isTr ? 'Aramanıza uygun parça bulunamadı.' : 'No chunks match your search criteria.'}
                 </div>
               ) : (
                 chunks.map((chunk, idx) => {
@@ -502,19 +507,19 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                                 ? 'bg-indigo-100 text-indigo-800 border border-indigo-300'
                                 : 'bg-white border border-slate-200 text-slate-600'
                             }`}>
-                              Page {pageNumber}
+                              {isTr ? 'Sayfa' : 'Page'} {pageNumber}
                             </span>
                           )}
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="text-[10px] font-mono text-slate-400">
-                            {content.length} chars
+                            {content.length} {isTr ? 'kr.' : 'chars'}
                           </span>
                           {isLong && (
                             <button
                               onClick={(e) => toggleChunkExpand(idx, e)}
-                              className="text-slate-400 hover:text-slate-700 p-1"
+                              className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
                             >
                               {isExpanded ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
                             </button>
@@ -539,12 +544,12 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                         {isSelected && (
                           <div className="text-[10px] text-indigo-600 flex items-center gap-1 font-bold">
                             <LocateFixed className="w-3 h-3 animate-spin" />
-                            <span>Grounded in PDF (Page {pageNumber || activePdfPage})</span>
+                            <span>{isTr ? `PDF İçinde Bulundu (Sayfa ${pageNumber || activePdfPage})` : `Grounded in PDF (Page ${pageNumber || activePdfPage})`}</span>
                           </div>
                         )}
                         {isSelected && (
                           <span className="text-[10px] text-indigo-500 font-semibold flex items-center gap-1 ml-auto">
-                            Jump to PDF ➔
+                            {isTr ? 'PDF’e Git ➔' : 'Jump to PDF ➔'}
                           </span>
                         )}
                       </div>
@@ -557,7 +562,7 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-slate-400">
             <Database className="w-10 h-10 mb-2 text-slate-300" />
-            <p className="text-xs font-medium">Select a document to inspect chunks</p>
+            <p className="text-xs font-medium">{isTr ? 'Parçaları incelemek için bir doküman seçin' : 'Select a document to inspect chunks'}</p>
           </div>
         )}
       </div>
@@ -569,7 +574,7 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
           className={`w-1 hover:w-1.5 transition-all cursor-col-resize flex items-center justify-center shrink-0 z-20 ${
             isDragging === 'middle' ? 'bg-indigo-500' : 'bg-slate-200 hover:bg-indigo-400'
           }`}
-          title="Drag to resize panels"
+          title={isTr ? "Panelleri yeniden boyutlandırmak için sürükleyin" : "Drag to resize panels"}
         >
           <div className="w-0.5 h-6 bg-slate-400 rounded-full" />
         </div>
@@ -590,10 +595,10 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                   {selectedChunkIndex !== null ? (
                     <>
                       <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
-                      <span>Viewing Chunk #{selectedChunkIndex} (Page {activePdfPage})</span>
+                      <span>{isTr ? `Parça #${selectedChunkIndex} (Sayfa ${activePdfPage})` : `Viewing Chunk #${selectedChunkIndex} (Page ${activePdfPage})`}</span>
                     </>
                   ) : (
-                    <>Select a chunk to jump to its page</>
+                    <>{isTr ? 'Sayfasına gitmek için bir parça seçin' : 'Select a chunk to jump to its page'}</>
                   )}
                 </p>
               </div>
@@ -605,23 +610,23 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                 <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200">
                   <button
                     onClick={() => setViewerMode('pdf')}
-                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all ${
+                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all cursor-pointer ${
                       viewerMode === 'pdf'
                         ? 'bg-white text-indigo-600 shadow-2xs'
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Raw PDF
+                    {isTr ? 'Orijinal PDF' : 'Raw PDF'}
                   </button>
                   <button
                     onClick={() => setViewerMode('text')}
-                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all ${
+                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all cursor-pointer ${
                       viewerMode === 'text'
                         ? 'bg-white text-indigo-600 shadow-2xs'
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Extracted Text
+                    {isTr ? 'Metin İçeriği' : 'Extracted Text'}
                   </button>
                 </div>
               )}
@@ -630,31 +635,31 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                 <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200">
                   <button
                     onClick={() => setViewerMode('image')}
-                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all ${
+                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all cursor-pointer ${
                       viewerMode === 'image'
                         ? 'bg-white text-emerald-600 shadow-2xs'
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Image View
+                    {isTr ? 'Görsel Görünümü' : 'Image View'}
                   </button>
                   <button
                     onClick={() => setViewerMode('text')}
-                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all ${
+                    className={`px-3 py-1 text-[11px] rounded-lg font-semibold transition-all cursor-pointer ${
                       viewerMode === 'text'
                         ? 'bg-white text-indigo-600 shadow-2xs'
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    OCR Text
+                    {isTr ? 'OCR Metni' : 'OCR Text'}
                   </button>
                 </div>
               )}
 
               <button
                 onClick={() => setShowDocViewer(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Hide Viewer"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title={isTr ? "Görüntüleyiciyi Gizle" : "Hide Viewer"}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -667,7 +672,7 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
               <div className="flex items-center gap-2 min-w-0">
                 <span className="font-mono font-bold bg-indigo-600 text-white px-2.5 py-1 rounded-lg text-xs shrink-0 shadow-2xs flex items-center gap-1.5">
                   <Zap className="w-3 h-3 text-amber-300" />
-                  Page {activePdfPage}
+                  {isTr ? 'Sayfa' : 'Page'} {activePdfPage}
                 </span>
 
                 {selectedChunkIndex !== null && (
@@ -682,10 +687,10 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                 <button
                   onClick={() => handlePageChange(activePdfPage - 1)}
                   disabled={activePdfPage <= 1}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
-                  title="Previous Page"
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                  title={isTr ? "Önceki Sayfa" : "Previous Page"}
                 >
-                  ◀ Prev
+                  {isTr ? '◀ Önceki' : '◀ Prev'}
                 </button>
 
                 <span className="text-xs font-mono font-bold text-slate-700 px-1">
@@ -695,20 +700,20 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                 <button
                   onClick={() => handlePageChange(activePdfPage + 1)}
                   disabled={activePdfPage >= totalPdfPages}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
-                  title="Next Page"
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                  title={isTr ? "Sonraki Sayfa" : "Next Page"}
                 >
-                  Next ▶
+                  {isTr ? 'Sonraki ▶' : 'Next ▶'}
                 </button>
 
                 {currentChunkContent && (
                   <button
                     onClick={() => handleCopySnippet(currentChunkContent)}
-                    className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
-                    title="Copy chunk text"
+                    className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                    title={isTr ? "Parça metnini kopyala" : "Copy chunk text"}
                   >
                     {copiedSnippet ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedSnippet ? 'Copied' : 'Copy'}</span>
+                    <span>{copiedSnippet ? (isTr ? 'Kopyalandı' : 'Copied') : (isTr ? 'Kopyala' : 'Copy')}</span>
                   </button>
                 )}
               </div>
@@ -740,7 +745,7 @@ const Inspector = ({ initialSelectedDocName, traceInfo }) => {
                   </div>
                 ) : (
                   <div className="whitespace-pre-wrap leading-relaxed">
-                    {docContent || 'No extracted text available.'}
+                    {docContent || (isTr ? 'Metin içeriği bulunamadı.' : 'No extracted text available.')}
                   </div>
                 )}
               </div>

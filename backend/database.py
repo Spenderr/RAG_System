@@ -42,10 +42,13 @@ def get_vector_store() -> Chroma:
     return _vector_store
 
 
-# Backward-compat alias so existing routes that do `from database import vector_store`
-# still work — they just get None until init_db() is called, which is fine because
-# no route runs before the lifespan startup hook.
-vector_store: Optional[Chroma] = None
+class VectorStoreProxy:
+    """Dynamic proxy that delegates attribute access to the initialized Chroma vector store."""
+    def __getattr__(self, name):
+        return getattr(get_vector_store(), name)
+
+
+vector_store = VectorStoreProxy()
 
 
 
@@ -75,11 +78,11 @@ def save_organizations():
 
 
 def ensure_unknown_org():
-    """Ensure the system 'Kurumsuz Belgeler (Genel Havuz)' organization always exists."""
+    """Ensure the system 'Genel / Klasörsüzler' organization always exists."""
     if "__unassigned__" not in organizations_db["organizations"]:
         organizations_db["organizations"]["__unassigned__"] = {
-            "name": "Kurumsuz Belgeler (Genel Havuz)",
-            "description": "Henüz bir kuruma/portföye atanmamış genel belgeler",
+            "name": "Genel / Klasörsüzler",
+            "description": "Bir klasöre veya kuruma atanmamış genel belgeler",
             "color": "#6b7280",
             "tags": [],
             "created_at": datetime.now().isoformat(),
@@ -88,9 +91,9 @@ def ensure_unknown_org():
         save_organizations()
     else:
         curr_name = organizations_db["organizations"]["__unassigned__"].get("name", "")
-        if curr_name in ["Unassigned", "Atanmamış", "Genel / Klasörsüzler", ""]:
-            organizations_db["organizations"]["__unassigned__"]["name"] = "Kurumsuz Belgeler (Genel Havuz)"
-            organizations_db["organizations"]["__unassigned__"]["description"] = "Henüz bir kuruma/portföye atanmamış genel belgeler"
+        if curr_name in ["Unassigned", "Atanmamış", "Kurumsuz Belgeler", "Kurumsuz Belgeler (Genel Havuz)", ""]:
+            organizations_db["organizations"]["__unassigned__"]["name"] = "Genel / Klasörsüzler"
+            organizations_db["organizations"]["__unassigned__"]["description"] = "Bir klasöre veya kuruma atanmamış genel belgeler"
             save_organizations()
 
 
