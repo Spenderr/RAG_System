@@ -4,7 +4,22 @@ import { ArrowRight, X, Upload, Sparkles, MessageSquare, Bot, Clock, CheckCircle
 const Tour = ({ onClose }) => {
   const [secondsRemaining, setSecondsRemaining] = useState(6);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [revealedSteps, setRevealedSteps] = useState([false, false, false]);
 
+  // Sequential Staggered Card Reveals
+  useEffect(() => {
+    const t1 = setTimeout(() => setRevealedSteps([true, false, false]), 200);
+    const t2 = setTimeout(() => setRevealedSteps([true, true, false]), 900);
+    const t3 = setTimeout(() => setRevealedSteps([true, true, true]), 1600);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
+  // Countdown Timer
   useEffect(() => {
     if (secondsRemaining <= 0) {
       setIsUnlocked(true);
@@ -28,17 +43,17 @@ const Tour = ({ onClose }) => {
   const progressPercent = Math.min(100, Math.round(((6 - secondsRemaining) / 6) * 100));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
         onClick={isUnlocked ? onClose : undefined}
       />
 
-      {/* Card */}
-      <div className="relative w-[500px] max-w-[94vw] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200">
-        {/* Top Gradient Bar */}
-        <div className="h-1.5 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600" />
+      {/* Card Modal */}
+      <div className="relative w-[480px] max-w-[94vw] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200">
+        {/* Top Gradient Accent */}
+        <div className="h-1.5 bg-gradient-to-r from-indigo-600 via-violet-600 to-emerald-500" />
 
         {/* Close Button */}
         {isUnlocked && (
@@ -51,9 +66,9 @@ const Tour = ({ onClose }) => {
           </button>
         )}
 
-        <div className="p-7 space-y-5">
+        <div className="p-7 sm:p-8 space-y-6">
           {/* Header */}
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[11px] font-extrabold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
               <span>Live Demo Environment</span>
@@ -62,63 +77,78 @@ const Tour = ({ onClose }) => {
               Autonomous Document Intelligence
             </h2>
             <p className="text-xs text-slate-500 font-medium">
-              Upload documents, let AI organize them into portfolios, and query them in real-time.
+              Self-organizing document warehouse with grounded AI search.
             </p>
           </div>
 
-          {/* 3 Bold Animated Cards */}
-          <div className="space-y-2.5">
+          {/* 3 Bold Sequentially Animated Cards (No subtext paragraphs) */}
+          <div className="space-y-3">
             {/* Step 1 */}
-            <div className="group p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/70 to-indigo-50/40 border border-blue-100 flex items-center gap-3.5 hover:border-blue-300 transition-all duration-200">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                <Upload className="w-5 h-5" />
+            <div
+              className={`p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/40 border border-blue-100 flex items-center justify-between gap-3 shadow-2xs transition-all duration-500 ease-out transform ${
+                revealedSteps[0]
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-bold text-slate-900">
+                  1. Upload Any File
+                </span>
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <span>1. Upload Any File</span>
-                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-md">PDF · Photo · Note</span>
-                </h4>
-                <p className="text-[11px] text-slate-600 mt-0.5">
-                  Drop messy scans, deeds, or notes. No manual naming needed.
-                </p>
-              </div>
+              <span className="text-[10px] font-bold tracking-wide text-blue-700 bg-blue-100/90 px-2.5 py-1 rounded-lg shrink-0">
+                PDF · Photo · Note
+              </span>
             </div>
 
             {/* Step 2 */}
-            <div className="group p-3.5 rounded-2xl bg-gradient-to-r from-violet-50/70 to-purple-50/40 border border-violet-100 flex items-center gap-3.5 hover:border-violet-300 transition-all duration-200">
-              <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                <Bot className="w-5 h-5" />
+            <div
+              className={`p-4 rounded-2xl bg-gradient-to-r from-violet-50/80 to-purple-50/40 border border-violet-100 flex items-center justify-between gap-3 shadow-2xs transition-all duration-500 ease-out transform ${
+                revealedSteps[1]
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-bold text-slate-900">
+                  2. AI Auto-Naming & Folders
+                </span>
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <span>2. Autonomous Auto-Naming & Folders</span>
-                  <span className="text-[10px] font-semibold text-violet-600 bg-violet-100/80 px-2 py-0.5 rounded-md">AI Stored</span>
-                </h4>
-                <p className="text-[11px] text-slate-600 mt-0.5">
-                  AI reads the contents and places files into ideal portfolio folders with standard names.
-                </p>
-              </div>
+              <span className="text-[10px] font-bold tracking-wide text-violet-700 bg-violet-100/90 px-2.5 py-1 rounded-lg shrink-0">
+                Auto Stored
+              </span>
             </div>
 
             {/* Step 3 */}
-            <div className="group p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/40 border border-emerald-100 flex items-center gap-3.5 hover:border-emerald-300 transition-all duration-200">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                <MessageSquare className="w-5 h-5" />
+            <div
+              className={`p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 to-teal-50/40 border border-emerald-100 flex items-center justify-between gap-3 shadow-2xs transition-all duration-500 ease-out transform ${
+                revealedSteps[2]
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-bold text-slate-900">
+                  3. Ask Anything via AI Chat
+                </span>
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <span>3. Ask Anything via AI Chat</span>
-                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-100/80 px-2 py-0.5 rounded-md">Grounded Citations</span>
-                </h4>
-                <p className="text-[11px] text-slate-600 mt-0.5">
-                  Instantly find and consult any clause or parcel with verifiable citations.
-                </p>
-              </div>
+              <span className="text-[10px] font-bold tracking-wide text-emerald-700 bg-emerald-100/90 px-2.5 py-1 rounded-lg shrink-0">
+                Grounded Citations
+              </span>
             </div>
           </div>
 
           {/* Ephemeral Notice */}
-          <div className="text-center">
+          <div className="text-center pt-1">
             <span className="text-[11px] text-slate-400 font-medium">
               ⚡ <strong>Demo Mode:</strong> Uploads are temporary for this session and reset on refresh.
             </span>
