@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, ArrowLeft, X, Upload, Sparkles, MessageSquare, Bot, CheckCircle2, Users, User, Layers, ShieldCheck, Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowRight, ArrowLeft, X, Upload, Sparkles, MessageSquare, Bot, Users, User, Layers, Clock, CheckCircle2, Zap } from 'lucide-react';
+
+const COUNTDOWN_SECONDS = 5;
 
 const Tour = ({ onClose }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [revealedSteps, setRevealedSteps] = useState([false, false, false]);
+  const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
+  const [isPaused, setIsPaused] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const timerRef = useRef(null);
 
   // Sequential Staggered Card Reveals on Page Change
   useEffect(() => {
     setRevealedSteps([false, false, false]);
+    setSecondsLeft(COUNTDOWN_SECONDS);
+
     const t1 = setTimeout(() => setRevealedSteps([true, false, false]), 100);
     const t2 = setTimeout(() => setRevealedSteps([true, true, false]), 300);
     const t3 = setTimeout(() => setRevealedSteps([true, true, true]), 500);
@@ -20,22 +27,66 @@ const Tour = ({ onClose }) => {
     };
   }, [currentPage]);
 
+  // 5-Second Countdown Timer per Slide (Runs after card entrance animations)
+  useEffect(() => {
+    if (isPaused || isExiting) return;
+
+    // Small initial delay so user sees cards finish animating before timer ticks
+    const startDelay = setTimeout(() => {
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            // Automatic transition when countdown hits 0
+            if (currentPage === 1) {
+              setCurrentPage(2);
+            } else {
+              handleStartExploring();
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }, 600);
+
+    return () => {
+      clearTimeout(startDelay);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [currentPage, isPaused, isExiting]);
+
   // Elegant, Smooth Fade-Out Exit
   const handleStartExploring = () => {
     if (isExiting) return;
     setIsExiting(true);
+    if (timerRef.current) clearInterval(timerRef.current);
     setTimeout(() => {
       onClose();
     }, 450);
   };
+
+  const handleNextPage = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCurrentPage(2);
+  };
+
+  const handlePrevPage = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCurrentPage(1);
+  };
+
+  const progressPercent = Math.min(100, Math.round(((COUNTDOWN_SECONDS - secondsLeft) / COUNTDOWN_SECONDS) * 100));
 
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 ease-in-out ${
         isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Backdrop with Slow Fade-Out */}
+      {/* Backdrop with Smooth Fade-Out */}
       <div
         className={`absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-all duration-500 ease-in-out ${
           isExiting ? 'opacity-0 backdrop-blur-none' : 'opacity-100'
@@ -57,6 +108,16 @@ const Tour = ({ onClose }) => {
             ? 'from-blue-600 via-indigo-600 to-emerald-500'
             : 'from-orange-500 via-amber-500 to-indigo-600'
         }`} />
+
+        {/* 5-Second Progress Bar */}
+        <div className="w-full bg-slate-100 h-1 overflow-hidden">
+          <div
+            className={`h-full transition-all duration-1000 ease-linear ${
+              currentPage === 1 ? 'bg-indigo-600' : 'bg-orange-500'
+            }`}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
 
         {/* Close Button */}
         <button
@@ -277,23 +338,31 @@ const Tour = ({ onClose }) => {
 
         {/* Footer Navigation */}
         <div className="px-6 sm:px-8 py-4 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-4">
-          {/* Left Button / Back */}
-          {currentPage === 2 ? (
-            <button
-              onClick={() => setCurrentPage(1)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleStartExploring}
-              className="text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-700 transition-colors cursor-pointer px-2"
-            >
-              Skip Tour
-            </button>
-          )}
+          {/* Left Button / Back / Countdown indicator */}
+          <div className="flex items-center gap-2">
+            {currentPage === 2 ? (
+              <button
+                onClick={handlePrevPage}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleStartExploring}
+                className="text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-700 transition-colors cursor-pointer px-2"
+              >
+                Skip Tour
+              </button>
+            )}
+
+            {/* Countdown Badge */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-500 text-xs font-mono font-semibold">
+              <Clock className={`w-3.5 h-3.5 ${currentPage === 1 ? 'text-indigo-600' : 'text-orange-500'} ${secondsLeft > 0 ? 'animate-spin' : ''}`} />
+              <span>{secondsLeft > 0 ? `${secondsLeft}s` : 'Ready'}</span>
+            </div>
+          </div>
 
           {/* Center Pagination Dots */}
           <div className="flex items-center gap-2">
@@ -316,7 +385,7 @@ const Tour = ({ onClose }) => {
           {/* Right Button / Next / Start Exploring */}
           {currentPage === 1 ? (
             <button
-              onClick={() => setCurrentPage(2)}
+              onClick={handleNextPage}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/25 transition-all cursor-pointer active:scale-95 hover:scale-[1.02]"
             >
               <span>Next: Workspaces</span>
