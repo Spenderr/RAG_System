@@ -32,37 +32,39 @@ async def ai_detect_organization(filename: str, text_preview: str) -> dict:
     org_list_text = "\n".join([
         f"- ID: {o['id']}, Name: {o['name']}, Existing Folders: {o.get('folders', [])}"
         for o in existing_orgs
-    ]) if existing_orgs else "Henüz kayıtlı kurum yok."
+    ]) if existing_orgs else "No registered organizations yet."
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    prompt = f"""Sen akıllı bir gayrimenkul ve portföy arşiv uzmanısın.
-Aşağıdaki dokümanı analiz et; ait olduğu kurumu, taşınmaz/lokasyon bazlı PORTFÖY KLASÖRÜNÜ ve etiketlerini belirle.
+    prompt = f"""You are an intelligent real estate and portfolio archiving assistant.
+Analyze the following document; determine its client/organization, property/location-based PORTFOLIO FOLDER, and tags.
 
-MEVCUT KURUMLAR VE KLASÖRLERİ:
+EXISTING ORGANIZATIONS AND FOLDERS:
 {org_list_text}
 
-DOKÜMAN ADI: {filename}
-DOKÜMAN METNİ ÖZETİ:
+DOCUMENT FILENAME: {filename}
+DOCUMENT TEXT PREVIEW:
 {text_preview[:2500]}
 
-KURALLAR:
-1. KURUM:
-   - Dokümanda geçen kişi/firma isimlerine göre mevcut kurumlardan birini seç ("suggested_org_id") veya yeni kurum adı ver ("suggested_org_name").
-2. PORTFÖY / KLASÖR ADLANDIRMA (ÇOK ÖNEMLİ):
-   - Her farklı arsa, daire, il/ilçe veya proje (örn. Silivri, Dikili, Kadıköy, Bodrum) AYRI BİR PORTFÖY KLASÖRÜDÜR.
-   - Seçilen kurumda önceden bir klasör (örn: "İzmir Dikili") olsa dahi, eğer bu doküman farklı bir taşınmaza (örn. "Silivri Arsa") aitse ASLA eski klasöre ekleme! Mutlaka o yeni taşınmaza özel YENİ bir Klasör Adı öner (örn. "İstanbul Silivri Arsa").
-   - Yalnızca bu doküman mevcut klasördeki taşınmazın aynısıysa o klasör adını ver.
-3. ETİKETLER:
-   - 2-4 adet net Türkçe etiket: ["tapu", "imar", "silivri", "arsa", "sozlesme"] gibi.
+RULES:
+1. ORGANIZATION:
+   - Match against existing organizations ("suggested_org_id") based on client/company names in the document, or suggest a new clean organization name in English ("suggested_org_name").
+2. PORTFOLIO / FOLDER NAMING (CRITICAL):
+   - Each distinct land parcel, apartment, city/district, or project is a SEPARATE PORTFOLIO FOLDER (e.g. "Paris Property Portfolio", "Berlin Office Building", "London Central Commercial").
+   - If this document refers to a distinct property location, DO NOT assign an old folder name! Propose a clean, descriptive folder name in English.
+   - Only reuse an existing folder if the document belongs to the exact same property/subject.
+3. TAGS:
+   - 2-4 clean English tags: ["deed", "zoning", "contract", "land", "agreement", "notes"].
+4. LANGUAGE:
+   - ALL output, reasoning, names, and tags MUST BE IN ENGLISH.
 
-Yanıtı kesinlikle bu JSON formatında ver:
+Respond strictly in this JSON format:
 {{
-  "suggested_org_id": "<eşleşen ID veya null>",
-  "suggested_org_name": "<kurum adı>",
-  "suggested_folder": "<taşınmaza/lokasyona özel klasör adı>",
+  "suggested_org_id": "<matched ID or null>",
+  "suggested_org_name": "<clean English organization name>",
+  "suggested_folder": "<property/location specific English folder name>",
   "confidence": "high/medium/low",
-  "reasoning": "<kısa açıklama>",
-  "suggested_tags": ["etiket1", "etiket2"],
+  "reasoning": "<concise English explanation>",
+  "suggested_tags": ["tag1", "tag2"],
   "doc_type": "contract/proposal/invoice/procedure/report/correspondence/other"
 }}
 """
@@ -120,54 +122,56 @@ async def analyze_batch_for_smart_organization(filenames: List[str]) -> dict:
                     except: pass
         files_context.append({
             "filename": fname,
-            "preview": text[:2500] if text else "İçerik okunamadı."
+            "preview": text[:2500] if text else "Content could not be read."
         })
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-    prompt = f"""Sen üst düzey bir gayrimenkul, portföy ve kurumsal doküman arşiv uzmanısın.
-Kullanıcı sisteme dosya(lar) yüklüyor. Amacın KULLANICIYA HİÇBİR MANUEL İŞ BIRAKMADAN tüm dosyaları doğru kuruma, doğru portföy klasörüne, temiz Türkçe dosya isimlerine ve zengin etiketlere otomatik bağlamaktır.
+    prompt = f"""You are an expert real estate, portfolio, and corporate document management assistant.
+The user is uploading file(s). Your goal is to automatically organize all files into the correct client/organization, distinct portfolio folder, clean standardized English filenames, and rich tags with ZERO manual work required from the user.
 
-MEVCUT KURUMLAR VE MEVCUT KLASÖRLERİ:
+EXISTING ORGANIZATIONS AND FOLDERS:
 {json.dumps(existing_orgs, ensure_ascii=False, indent=2)}
 
-YÜKLENEN DOSYALARIN METİN ÖZETLERİ ({len(filenames)} adet):
+UPLOADED FILES TEXT PREVIEWS ({len(filenames)} files):
 {json.dumps(files_context, ensure_ascii=False, indent=2)}
 
-ANALİZ VE OTOMATİK DÜZENLEME KURALLARI:
-1. KURUM EŞLEŞTİRMESİ (ÇOK ÖNEMLİ):
-   - Dosya içeriklerindeki kişi isimleri, şirket unvanları, antetler, WhatsApp konuşmacı adları veya imzalara bak.
-   - Eğer içerik Mevcut Kurumlar listesindeki bir kurumla (örneğin "Nuran Hanım", "Bassel Group" vb.) uyuşuyorsa veya kısmen geçiyorsa ("Nuran", "Bassel", vb.), "suggested_org_id" alanına o kurumun ID'sini mutlaka yaz.
-   - Eğer tamamen yeni bir kurum veya şahıs ise "suggested_org_id": null yap ve "suggested_org_name" alanına temiz kurum adını yaz.
+ANALYSIS AND AUTOMATION RULES:
+1. ORGANIZATION MATCHING:
+   - Identify company titles, client names, letterheads, or signatories.
+   - If matching an existing org, provide its "suggested_org_id".
+   - If a new entity or individual, set "suggested_org_id": null and provide a clean English "suggested_org_name".
 
-2. PORTFÖY / KLASÖR ADLANDIRMA (ÇOK KRİTİK - TAŞINMAZ / LOKASYON AYRIMI):
-   - Her farklı arsa, daire, il/ilçe, mahalle, proje veya ada-parsel AYRI BİR PORTFÖY KLASÖRÜDÜR.
-   - DİKKAT: Kurum aynı olsa bile (örneğin "Nuran Hanım"), eğer o kurumun mevcut klasörleri (örn: "İzmir Dikili") ile yüklenen yeni dosyaların lokasyonu/konusu (örn: "Silivri Arsa", "Kadıköy Daire", "Bodrum Villa") FARKLı ise, ASLA eski klasörün adını verme! Mutlaka o yeni taşınmaza özel YENİ BİR KLASÖR ADI OLUŞTUR (örn: "İstanbul Silivri Arsa" veya "Silivri Selimpaşa Portföyü").
-   - Yalnızca ve yalnızca yüklenen evraklar mevcut bir klasördeki taşınmazın aynısına aitse o mevcut klasör adını ver.
-   - Eğer yeni bir taşınmaz ise, dosyalarda geçen İl / İlçe / Mahalle / Proje ve Gayrimenkul tipini içeren net, şık bir portföy klasör adı üret (örn: "Silivri Arsa Portföyü", "Kadıköy 3+1 Daire").
+2. PORTFOLIO / FOLDER NAMING (PROPERTY / LOCATION SPECIFIC):
+   - Each distinct land parcel, building, project, or location is a SEPARATE PORTFOLIO FOLDER.
+   - If the uploaded files represent a new property/location, create a NEW English folder name (e.g. "Paris Real Estate Portfolio", "London Central Office", "Miami Residential Development").
+   - Only reuse an existing folder if the files strictly belong to that exact property.
 
-3. DOSYA İSİMLERİNİ TEMİZLEME:
-   - "Ekran Resmi 2026-...", "IMG_4021.PNG", "scan_1.pdf" gibi anlamsız isimleri YASAKLA.
-   - Her dosyanın içeriğini tam yansıtan Türkçe, net ve alt çizgili dosya adı üret (örn: "1_Silivri_Tapu_Senedi.png", "2_Silivri_Imar_Krokisi.pdf", "3_Silivri_WhatsApp_Notu.png").
+3. STANDARDIZED FILENAMES:
+   - Eliminate meaningless names like "Screenshot 2026-...", "IMG_4021.PNG", "scan_1.pdf".
+   - Create clear, numbered English filenames reflecting actual content (e.g. "1_Paris_Title_Deed.png", "2_Paris_Zoning_Plan.pdf", "3_Paris_Contract_Summary.pdf").
 
-4. ZENGİN OTOMATİK ETİKETLER (Kullanıcı etiketle uğraşmasın):
-   - İçeriğe göre 2-4 adet net Türkçe etiket üret: ["tapu", "imar", "silivri", "arsa", "sozlesme", "whatsapp_notu"] gibi.
+4. TAGS:
+   - 2-4 clean English tags: ["deed", "zoning", "contract", "meeting_note", "commercial"].
 
-5. ÖZET:
-   - "batch_summary": Yapay zekanın ne tespit ettiğini kullanıcıya 1 cümlede bildiren kibar ve net Türkçe açıklama.
+5. BATCH SUMMARY:
+   - "batch_summary": A concise, polite, professional 1-sentence English explanation summarizing what was detected and organized.
 
-Yanıtı kesinlikle bu JSON şemasında ver:
+6. LANGUAGE:
+   - ALL output, summary, filenames, folders, and tags MUST BE IN ENGLISH.
+
+Respond strictly with this JSON schema:
 {{
   "is_portfolio_batch": true/false,
-  "suggested_org_id": "<eşleşen kurum ID veya null>",
-  "suggested_org_name": "<kurum adı>",
-  "suggested_folder": "<taşınmaza/lokasyona özel net portföy/klasör adı>",
+  "suggested_org_id": "<matched org ID or null>",
+  "suggested_org_name": "<clean English org name>",
+  "suggested_folder": "<property/location specific English folder name>",
   "confidence": "high/medium/low",
-  "batch_summary": "<1 cümlelik açıklama>",
+  "batch_summary": "<1 sentence English explanation>",
   "file_renames": {{
-    "orijinal_adi.ext": "1_Temiz_Dosya_Adi.ext"
+    "original_filename.ext": "1_Clean_Filename.ext"
   }},
-  "suggested_tags": ["etiket1", "etiket2", "etiket3"]
+  "suggested_tags": ["tag1", "tag2", "tag3"]
 }}
 """
 
@@ -185,11 +189,11 @@ Yanıtı kesinlikle bu JSON şemasında ver:
             "is_portfolio_batch": len(filenames) > 1,
             "suggested_org_id": None,
             "suggested_org_name": None,
-            "suggested_folder": "Yeni Portföy" if len(filenames) > 1 else "",
+            "suggested_folder": "New Portfolio" if len(filenames) > 1 else "",
             "confidence": "low",
-            "batch_summary": "Dosyalar toplu olarak hazırlandı.",
+            "batch_summary": "Files prepared and categorized in batch.",
             "file_renames": {f: f for f in filenames},
-            "suggested_tags": ["portföy"]
+            "suggested_tags": ["portfolio"]
         }
 
 

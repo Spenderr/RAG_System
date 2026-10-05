@@ -9,6 +9,7 @@ import {
 import { useLanguage } from '../context/LanguageContext';
 
 const Dashboard = ({
+  activeView,
   onNavigate,
   onSelectOrg,
   onAskAi,
@@ -25,170 +26,268 @@ const Dashboard = ({
   const [searchPrompt, setSearchPrompt] = useState('');
   const [hoveredSegment, setHoveredSegment] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [statsRes, orgsRes, docsRes] = await Promise.all([
-          fetch('/api/stats').catch(() => null),
-          fetch('/api/organizations').catch(() => null),
-          fetch('/api/documents').catch(() => null),
-        ]);
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [statsRes, orgsRes, docsRes] = await Promise.all([
+        fetch('/api/stats').catch(() => null),
+        fetch('/api/organizations').catch(() => null),
+        fetch('/api/documents').catch(() => null),
+      ]);
 
-        if (statsRes?.ok) {
-          const s = await statsRes.json();
-          setStats({
-            documents: s.total_documents || 0,
-            vectors: s.total_vectors || 0,
-            organizations: s.total_organizations || 0,
-          });
-        }
-
-        if (orgsRes?.ok) {
-          const o = await orgsRes.json();
-          setOrganizations(o || []);
-        }
-
-        if (docsRes?.ok) {
-          const d = await docsRes.json();
-          setDocuments(d || []);
-        }
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-      } finally {
-        setIsLoading(false);
+      if (statsRes?.ok) {
+        const s = await statsRes.json();
+        setStats({
+          documents: s.total_documents || 0,
+          vectors: s.total_vectors || 0,
+          organizations: s.total_organizations || 0,
+        });
       }
-    };
 
+      if (orgsRes?.ok) {
+        const o = await orgsRes.json();
+        setOrganizations(o || []);
+      }
+
+      if (docsRes?.ok) {
+        const d = await docsRes.json();
+        setDocuments(d || []);
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
+    window.addEventListener('mainchunk_docs_updated', fetchData);
+    window.addEventListener('focus', fetchData);
+    return () => {
+      window.removeEventListener('mainchunk_docs_updated', fetchData);
+      window.removeEventListener('focus', fetchData);
+    };
   }, []);
 
-  // Compute total folders across all orgs
+  useEffect(() => {
+    if (activeView === 'dashboard') {
+      fetchData();
+    }
+  }, [activeView]);
+
+  // Filter out system organizations like __unassigned__ for user-facing counts & showcase
+  const userOrgs = useMemo(() => {
+    return organizations.filter(o => !o.is_system && o.id !== '__unassigned__');
+  }, [organizations]);
+
+  // Compute total folders strictly from user organizations
   const totalFoldersCount = useMemo(() => {
     const set = new Set();
-    organizations.forEach(o => {
+    userOrgs.forEach(o => {
       (o.folders || []).forEach(f => set.add(`${o.id}_${f}`));
     });
     return set.size;
-  }, [organizations]);
+  }, [userOrgs]);
 
-  // ── REAL ESTATE & PORTFOLIO CATEGORY BREAKDOWN ────────────────────────────
-  // Classifies documents into business categories: Arsa, Kat Karşılığı, Kiralık/Satılık, vb.
+  // ── PROPERTY & ASSET TYPE CLASSIFICATION BREAKDOWN ────────────────────────
+  // Classifies portfolio files into distinct property varieties (Apartments, Land/Plots, Villas, Commercial, Development, Legal/Deeds)
   const categoryBreakdown = useMemo(() => {
-    let arsa = 0;
-    let katKarsiligi = 0;
-    let kiralikSatilik = 0;
-    let ticariSozlesme = 0;
-    let sertifikalar = 0;
-    let musteriNotlari = 0;
-    let diger = 0;
+    let apartments = 0;
+    let land = 0;
+    let villas = 0;
+    let commercial = 0;
+    let development = 0;
+    let contracts = 0;
+    let general = 0;
 
     documents.forEach(d => {
       const name = (d.name || '').toLowerCase();
       const folder = (d.folder || '').toLowerCase();
+      const orgName = (d.org_name || '').toLowerCase();
       const tags = (d.tags || []).map(t => String(t).toLowerCase());
-      const allText = `${name} ${folder} ${tags.join(' ')}`;
+      const allText = `${name} ${folder} ${orgName} ${tags.join(' ')}`;
 
-      // 1. Kat Karşılığı
-      if (allText.includes('kat_karsiligi') || allText.includes('kat karşılığı') || allText.includes('müteahhit') || allText.includes('insaat') || allText.includes('inşaat')) {
-        katKarsiligi++;
+      // 1. Land & Building Plots
+      if (
+        allText.includes('plot') ||
+        allText.includes('building_plot') ||
+        allText.includes('site_plan') ||
+        allText.includes('land') ||
+        allText.includes('arsa') ||
+        allText.includes('arazi') ||
+        allText.includes('tarla') ||
+        allText.includes('zoning') ||
+        allText.includes('imar') ||
+        allText.includes('parcel') ||
+        allText.includes('parsel') ||
+        allText.includes('dikili') ||
+        allText.includes('silivri') ||
+        allText.includes('field')
+      ) {
+        land++;
       }
-      // 2. Arsa & Arazi (Silivri, Dikili, Tapu, vb.)
-      else if (allText.includes('arsa') || allText.includes('dikili') || allText.includes('silivri') || allText.includes('tapu') || allText.includes('parsel') || allText.includes('tarla') || allText.includes('arazi')) {
-        arsa++;
+      // 2. Villas, Mansions & Detached Estates
+      else if (
+        allText.includes('mansion') ||
+        allText.includes('villa') ||
+        allText.includes('köşk') ||
+        allText.includes('kosk') ||
+        allText.includes('yalı') ||
+        allText.includes('yali') ||
+        allText.includes('malikane') ||
+        allText.includes('private_house') ||
+        allText.includes('müstakil') ||
+        allText.includes('mustakil')
+      ) {
+        villas++;
       }
-      // 3. Kiralık & Satılık Konut / Ticari
-      else if (allText.includes('kiralık') || allText.includes('kiralik') || allText.includes('satılık') || allText.includes('satilik') || allText.includes('daire') || allText.includes('konut') || allText.includes('villa') || allText.includes('dükkan') || allText.includes('dukkan')) {
-        kiralikSatilik++;
+      // 3. Construction, Renovation & Development Projects
+      else if (
+        allText.includes('renovation') ||
+        allText.includes('engineering') ||
+        allText.includes('construction') ||
+        allText.includes('contractor') ||
+        allText.includes('architectural') ||
+        allText.includes('insaat') ||
+        allText.includes('inşaat') ||
+        allText.includes('müteahhit') ||
+        allText.includes('kat_karsiligi') ||
+        allText.includes('kat karşılığı') ||
+        allText.includes('development')
+      ) {
+        development++;
       }
-      // 4. Müşteri Notları & Teklifler
-      else if (d.doc_type === 'whatsapp' || tags.includes('whatsapp') || allText.includes('teklif') || allText.includes('pazarlık') || allText.includes('görüşme') || allText.includes('not') || name.startsWith('wa_')) {
-        musteriNotlari++;
+      // 4. Commercial, Retail & Office Spaces
+      else if (
+        allText.includes('commercial') ||
+        allText.includes('office') ||
+        allText.includes('ofis') ||
+        allText.includes('dükkan') ||
+        allText.includes('dukkan') ||
+        allText.includes('retail') ||
+        allText.includes('store') ||
+        allText.includes('plaza') ||
+        allText.includes('shop') ||
+        allText.includes('warehouse') ||
+        allText.includes('depo') ||
+        allText.includes('business')
+      ) {
+        commercial++;
       }
-      // 5. Sertifikalar & Yetki Belgeleri
-      else if (tags.includes('sertifika') || allText.includes('sertifika') || allText.includes('certificate') || allText.includes('yetki') || allText.includes('hackerrank') || allText.includes('freecodecamp')) {
-        sertifikalar++;
+      // 5. Apartments & Residential Units
+      else if (
+        allText.includes('apartment') ||
+        allText.includes('apartman') ||
+        allText.includes('residence') ||
+        allText.includes('residences') ||
+        allText.includes('residential') ||
+        allText.includes('daire') ||
+        allText.includes('konut') ||
+        allText.includes('duplex') ||
+        allText.includes('triplex') ||
+        allText.includes('flat') ||
+        allText.includes('housing') ||
+        allText.includes('condo') ||
+        allText.includes('spa') ||
+        allText.includes('penthouse')
+      ) {
+        apartments++;
       }
-      // 6. Ticari Sözleşmeler & Prosedürler
-      else if (allText.includes('procedure') || allText.includes('draft') || allText.includes('sozlesme') || allText.includes('sözleşme') || allText.includes('minerals') || allText.includes('commercial')) {
-        ticariSozlesme++;
+      // 6. Legal Deeds, Brokerage Mandates & Contracts
+      else if (
+        allText.includes('deed') ||
+        allText.includes('tapu') ||
+        allText.includes('mandate') ||
+        allText.includes('brokerage') ||
+        allText.includes('contract') ||
+        allText.includes('agreement') ||
+        allText.includes('sozlesme') ||
+        allText.includes('sözleşme') ||
+        allText.includes('protocol') ||
+        allText.includes('offer') ||
+        allText.includes('negotiation') ||
+        allText.includes('lease')
+      ) {
+        contracts++;
       }
+      // 7. General / Other Assets
       else {
-        diger++;
+        general++;
       }
     });
 
     const total = documents.length || 1;
     const items = [
       {
-        key: 'arsa',
-        label: t('catArsa'),
-        desc: t('catArsaDesc'),
-        count: arsa,
+        key: 'apartments',
+        label: t('catApartments'),
+        desc: t('catApartmentsDesc'),
+        count: apartments,
+        color: '#6366f1', // Indigo
+        lightBg: 'bg-indigo-50',
+        textColor: 'text-indigo-700',
+        percent: Math.round((apartments / total) * 100),
+      },
+      {
+        key: 'land',
+        label: t('catLand'),
+        desc: t('catLandDesc'),
+        count: land,
         color: '#f97316', // Orange
         lightBg: 'bg-orange-50',
         textColor: 'text-orange-700',
-        percent: Math.round((arsa / total) * 100),
+        percent: Math.round((land / total) * 100),
       },
       {
-        key: 'katKarsiligi',
-        label: t('catKatKarsiligi'),
-        desc: t('catKatKarsiligiDesc'),
-        count: katKarsiligi,
-        color: '#8b5cf6', // Violet
-        lightBg: 'bg-violet-50',
-        textColor: 'text-violet-700',
-        percent: Math.round((katKarsiligi / total) * 100),
-      },
-      {
-        key: 'kiralikSatilik',
-        label: t('catKiralikSatilik'),
-        desc: t('catKiralikSatilikDesc'),
-        count: kiralikSatilik,
-        color: '#06b6d4', // Cyan
-        lightBg: 'bg-cyan-50',
-        textColor: 'text-cyan-700',
-        percent: Math.round((kiralikSatilik / total) * 100),
-      },
-      {
-        key: 'musteriNotlari',
-        label: t('catMusteriNotlari'),
-        desc: t('catMusteriNotlariDesc'),
-        count: musteriNotlari,
+        key: 'villas',
+        label: t('catVillas'),
+        desc: t('catVillasDesc'),
+        count: villas,
         color: '#ec4899', // Pink
         lightBg: 'bg-pink-50',
         textColor: 'text-pink-700',
-        percent: Math.round((musteriNotlari / total) * 100),
+        percent: Math.round((villas / total) * 100),
       },
       {
-        key: 'sertifikalar',
-        label: t('catSertifikalar'),
-        desc: t('catSertifikalarDesc'),
-        count: sertifikalar,
+        key: 'commercial',
+        label: t('catCommercial'),
+        desc: t('catCommercialDesc'),
+        count: commercial,
+        color: '#06b6d4', // Cyan
+        lightBg: 'bg-cyan-50',
+        textColor: 'text-cyan-700',
+        percent: Math.round((commercial / total) * 100),
+      },
+      {
+        key: 'development',
+        label: t('catDevelopment'),
+        desc: t('catDevelopmentDesc'),
+        count: development,
+        color: '#8b5cf6', // Violet
+        lightBg: 'bg-violet-50',
+        textColor: 'text-violet-700',
+        percent: Math.round((development / total) * 100),
+      },
+      {
+        key: 'contracts',
+        label: t('catContracts'),
+        desc: t('catContractsDesc'),
+        count: contracts,
         color: '#10b981', // Emerald
         lightBg: 'bg-emerald-50',
         textColor: 'text-emerald-700',
-        percent: Math.round((sertifikalar / total) * 100),
+        percent: Math.round((contracts / total) * 100),
       },
       {
-        key: 'ticariSozlesme',
-        label: t('catTicariSozlesme'),
-        desc: t('catTicariSozlesmeDesc'),
-        count: ticariSozlesme,
-        color: '#3b82f6', // Blue
-        lightBg: 'bg-blue-50',
-        textColor: 'text-blue-700',
-        percent: Math.round((ticariSozlesme / total) * 100),
-      },
-      {
-        key: 'diger',
-        label: t('catDiger'),
-        desc: t('catDigerDesc'),
-        count: diger,
+        key: 'general',
+        label: t('catGeneral'),
+        desc: t('catGeneralDesc'),
+        count: general,
         color: '#64748b', // Slate
         lightBg: 'bg-slate-50',
         textColor: 'text-slate-700',
-        percent: Math.round((diger / total) * 100),
+        percent: Math.round((general / total) * 100),
       },
     ].filter(i => i.count > 0);
 
@@ -199,83 +298,25 @@ const Dashboard = ({
   // ── ORGANIZATION SHARE BREAKDOWN ──────────────────────────────────────────
   const orgBreakdown = useMemo(() => {
     const total = documents.length || 1;
-    return organizations.map(org => {
+    return userOrgs.map(org => {
       const count = org.document_count || 0;
-      const isUnassigned = org.id === '__unassigned__';
       return {
         id: org.id,
-        name: isUnassigned ? t('unassignedSystemOrg') : (org.name || (isTr ? 'İsimsiz Portföy' : 'Unnamed Portfolio')),
-        color: org.color || (isUnassigned ? '#64748b' : '#6366f1'),
+        name: org.name || (isTr ? 'İsimsiz Portföy' : 'Unnamed Portfolio'),
+        color: org.color || '#6366f1',
         count: count,
         percent: Math.round((count / total) * 100),
         foldersCount: (org.folders || []).length,
-        isSystem: org.is_system || isUnassigned,
+        isSystem: false,
       };
     }).sort((a, b) => b.count - a.count);
-  }, [organizations, documents, language]);
+  }, [userOrgs, documents, language]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!searchPrompt.trim()) return;
     onAskAi?.(searchPrompt.trim());
   };
-
-  const samplePrompts = useMemo(() => {
-    if (isTr) {
-      return [
-        {
-          title: 'Silivri Arsa & Kat Karşılığı',
-          desc: 'Nuran Hanım portföyündeki Silivri arsa tapusu ve kat karşılığı şartları neler?',
-          tag: 'Nuran Hanım',
-          color: '#f97316',
-        },
-        {
-          title: 'Bakır & Metal Tedariği',
-          desc: '1000mt x 12 bakır veya ticari akreditif şartları hangi sözleşmelerde geçiyor?',
-          tag: 'Ticari Sözleşmeler',
-          color: '#3b82f6',
-        },
-        {
-          title: 'Sertifika & Yetkinlikler',
-          desc: 'Ahmed Patel hangi teknik, web tasarım ve versiyon kontrolü sertifikalarına sahip?',
-          tag: 'Ahmed Patel',
-          color: '#6366f1',
-        },
-        {
-          title: 'Dikili Arsa Portföyü',
-          desc: 'İzmir Dikili 35-65 portföyüne ait görseller ve ada/parsel tapu detayları',
-          tag: 'Gayrimenkul',
-          color: '#10b981',
-        },
-      ];
-    }
-    return [
-      {
-        title: 'Silivri Land & Construction Shares',
-        desc: 'What are the deed details and floor equivalent terms in Nuran Hanım’s Silivri portfolio?',
-        tag: 'Nuran Hanım',
-        color: '#f97316',
-      },
-      {
-        title: 'Copper & Metal Supply Contracts',
-        desc: 'Which commercial agreements outline the 1000mt x 12 copper and LC payment terms?',
-        tag: 'Contracts',
-        color: '#3b82f6',
-      },
-      {
-        title: 'Ahmed Patel Credentials',
-        desc: 'What technical, responsive web and Git version control certificates are verified?',
-        tag: 'Ahmed Patel',
-        color: '#6366f1',
-      },
-      {
-        title: 'Dikili Land Portfolio',
-        desc: 'Summarize title deed parcel numbers and images for the Izmir Dikili 35-65 property',
-        tag: 'Real Estate',
-        color: '#10b981',
-      },
-    ];
-  }, [language]);
 
   // SVG Donut geometry calculations
   const donutRadius = 52;
@@ -311,15 +352,13 @@ const Dashboard = ({
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-2.5 backdrop-blur-sm">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>{isTr ? 'Depo Yöneticisi · Akıllı Emlak & Portföy Arşivi' : 'Document Butler · Smart Real Estate & Portfolio Repository'}</span>
+                  <span>{isTr ? 'Belge & Bilgi Asistanı · Deponuz İçin Akıllı AI' : 'Document & Info Assistant · An AI Assistant for Your Warehouse'}</span>
                 </div>
                 <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-                  {isTr ? 'Depo Kontrol Merkezi 🏛️' : 'Butler Control Center 🏛️'}
+                  {isTr ? 'Belge Deposu & Bilgi Merkezi 🏛️' : 'Document Warehouse & AI Center 🏛️'}
                 </h1>
                 <p className="text-xs lg:text-sm text-slate-300 mt-1 max-w-xl">
-                  {isTr
-                    ? 'Arsa, kat karşılığı, ticari sözleşmeler ve WhatsApp notlarınız depolandı, analiz edildi ve sorgulanmaya hazır.'
-                    : 'Land deeds, contractor agreements, commercial contracts and WhatsApp notes are stored, analyzed and ready for query.'}
+                  Land deeds, contractor agreements, commercial contracts, and client memos are stored, analyzed, and ready for query.
                 </p>
               </div>
 
@@ -330,21 +369,21 @@ const Dashboard = ({
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 active:scale-95 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>{isTr ? '+ Dosya Yükle' : '+ Upload Files'}</span>
+                  <span>Upload Files</span>
                 </button>
                 <button
                   onClick={() => onOpenNoteModal?.()}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>{isTr ? '+ Metin / Not Ekle' : '+ Add Note / Text'}</span>
+                  <span>Add Note / Text</span>
                 </button>
                 <button
                   onClick={() => onNavigate?.('organizations')}
                   className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-sm border border-white/15 transition-all cursor-pointer"
                 >
                   <Building2 className="w-4 h-4" />
-                  <span>{isTr ? 'Portföy Gezgini' : 'Portfolio Explorer'}</span>
+                  <span>Portfolio Explorer</span>
                 </button>
               </div>
             </div>
@@ -356,7 +395,7 @@ const Dashboard = ({
                 <input
                   value={searchPrompt}
                   onChange={(e) => setSearchPrompt(e.target.value)}
-                  placeholder={isTr ? "Depo Yöneticisine sorun... (Örn: Silivri arsa kat karşılığı şartları ve son müşteri teklifi nedir?)" : "Ask Document Butler... (e.g. What are the Silivri parcel deed details and contractor terms?)"}
+                  placeholder="Ask your Document & Info Assistant... (e.g. What are the Paris property deed details and agreement terms?)"
                   className="w-full bg-white/10 hover:bg-white/[0.14] focus:bg-white/15 border border-white/20 focus:border-indigo-400 rounded-2xl py-3.5 pl-12 pr-28 text-xs lg:text-sm text-white placeholder:text-slate-400 focus:outline-none transition-all shadow-inner backdrop-blur-md"
                 />
                 <button
@@ -365,7 +404,7 @@ const Dashboard = ({
                   className="absolute right-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{isTr ? 'Sor' : 'Ask'}</span>
+                  <span>Ask</span>
                 </button>
               </div>
             </form>
@@ -373,9 +412,9 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            2. KPI STATS CARDS
+            2. KPI STATS CARDS (PORTFOLIOS, FOLDERS, DOCUMENT ARCHIVE)
         ───────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div
             onClick={() => onNavigate?.('organizations')}
             className="group p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
@@ -386,13 +425,13 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{isTr ? 'Kurumlar / Portföyler' : 'Portfolios / Clients'}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Portfolios / Clients</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-extrabold text-slate-900">{stats.organizations}</span>
-              <span className="text-xs text-slate-500 font-medium">{isTr ? 'aktif portföy' : 'active portfolios'}</span>
+              <span className="text-2xl font-extrabold text-slate-900">{userOrgs.length}</span>
+              <span className="text-xs text-slate-500 font-medium">active portfolios</span>
             </div>
             <div className="mt-2 text-[11px] text-indigo-600 font-medium flex items-center gap-1">
-              <span>{isTr ? 'Gezginde Görüntüle' : 'View in Explorer'}</span>
+              <span>View in Explorer</span>
               <ChevronRight className="w-3 h-3" />
             </div>
           </div>
@@ -407,19 +446,19 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{isTr ? 'Raflar & Klasörler' : 'Sub-Folders & Shelves'}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sub-Folders & Shelves</p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-extrabold text-slate-900">{totalFoldersCount}</span>
-              <span className="text-xs text-slate-500 font-medium">{isTr ? 'düzenli klasör' : 'organized folders'}</span>
+              <span className="text-xs text-slate-500 font-medium">organized folders</span>
             </div>
             <div className="mt-2 text-[11px] text-amber-600 font-medium flex items-center gap-1">
-              <span>{isTr ? 'Portföyleri İncele' : 'Browse Folders'}</span>
+              <span>Browse Folders</span>
               <ChevronRight className="w-3 h-3" />
             </div>
           </div>
 
           <div
-            onClick={() => onNavigate?.('documents')}
+            onClick={() => onNavigate?.('upload')}
             className="group p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer"
           >
             <div className="flex items-center justify-between mb-3">
@@ -428,45 +467,24 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{isTr ? 'İndekslenmiş Belgeler' : 'Indexed Documents'}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Document & Note Archive</p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-extrabold text-slate-900">{stats.documents}</span>
-              <span className="text-xs text-slate-500 font-medium">{isTr ? 'toplam dosya' : 'total files'}</span>
+              <span className="text-xs text-slate-500 font-medium">total files & notes</span>
             </div>
             <div className="mt-2 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-              <span>{isTr ? 'Doküman Okuyucu' : 'Document Reader'}</span>
-              <ChevronRight className="w-3 h-3" />
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigate?.('inspector')}
-            className="group p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:border-violet-300 hover:shadow-md transition-all cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Database className="w-5 h-5" />
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-violet-600 transition-colors" />
-            </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{isTr ? 'Vektör Hafızası' : 'Vector Memory'}</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-extrabold text-slate-900">{stats.vectors}</span>
-              <span className="text-xs text-slate-500 font-medium">{isTr ? 'chunk indeksi' : 'chunk vectors'}</span>
-            </div>
-            <div className="mt-2 text-[11px] text-violet-600 font-medium flex items-center gap-1">
-              <span>{isTr ? 'Chunk Inspector' : 'Inspect Vectors'}</span>
+              <span>Upload & Chat</span>
               <ChevronRight className="w-3 h-3" />
             </div>
           </div>
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            3. CLEAN & IMPACTFUL CHARTS (PORTFÖY & GAYRİMENKUL DAĞILIMI)
+            3. CLEAN & IMPACTFUL CHARTS
         ───────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           
-          {/* Chart 1: Minimalist Donut Chart - Real Estate Categories */}
+          {/* Chart 1: Minimalist Donut Chart */}
           <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
             <div>
               {/* Header */}
@@ -484,7 +502,7 @@ const Dashboard = ({
                 {/* Dominant Highlight Badge */}
                 {categoryBreakdown.dominant && (
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-orange-800 text-xs font-bold shadow-2xs">
-                    <span>{isTr ? '🏆 En Çok:' : '🏆 Top:'}</span>
+                    <span>🏆 Top:</span>
                     <span className="font-extrabold">{categoryBreakdown.dominant.label}</span>
                     <span className="text-orange-600 font-mono font-black">(%{categoryBreakdown.dominant.percent})</span>
                   </div>
@@ -492,112 +510,141 @@ const Dashboard = ({
               </div>
 
               {/* Chart Visual & Legend Container */}
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-12 items-center gap-6">
-                
-                {/* SVG Donut Circle */}
-                <div className="sm:col-span-5 flex flex-col items-center justify-center relative">
-                  <div className="relative w-44 h-44 flex items-center justify-center">
-                    <svg viewBox="0 0 140 140" className="w-full h-full transform -rotate-90">
-                      {/* Background track circle */}
-                      <circle
-                        cx="70"
-                        cy="70"
-                        r={donutRadius}
-                        fill="transparent"
-                        stroke="#f1f5f9"
-                        strokeWidth="15"
-                      />
-                      {/* Colored Donut Segments */}
-                      {donutSegments.map((seg) => {
-                        const isHovered = hoveredSegment === seg.key;
-                        return (
-                          <circle
-                            key={seg.key}
-                            cx="70"
-                            cy="70"
-                            r={donutRadius}
-                            fill="transparent"
-                            stroke={seg.color}
-                            strokeWidth={isHovered ? "20" : "15"}
-                            strokeDasharray={seg.strokeDasharray}
-                            strokeDashoffset={seg.strokeDashoffset}
-                            strokeLinecap="round"
-                            className="transition-all duration-300 cursor-pointer"
-                            onMouseEnter={() => setHoveredSegment(seg.key)}
-                            onMouseLeave={() => setHoveredSegment(null)}
-                          />
-                        );
-                      })}
-                    </svg>
-
-                    {/* Donut Center Count & Label */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
-                      <span className="text-2xl font-black text-slate-900 tracking-tight">
-                        {hoveredSegment
-                          ? categoryBreakdown.items.find(i => i.key === hoveredSegment)?.count
-                          : categoryBreakdown.total}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider truncate max-w-[90px]">
-                        {hoveredSegment
-                          ? categoryBreakdown.items.find(i => i.key === hoveredSegment)?.label.split(' ')[0]
-                          : (isTr ? 'Toplam Belge' : 'Total Docs')}
-                      </span>
-                    </div>
+              {categoryBreakdown.items.length === 0 ? (
+                <div className="mt-4 text-center py-9 px-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400">
+                  <PieChart className="w-8 h-8 text-slate-300 mx-auto mb-2 opacity-70" />
+                  <p className="font-semibold text-slate-700">No Indexed Documents Yet</p>
+                  <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                    Upload PDFs, deeds, photos, or text notes; the AI will categorize and visualize them here automatically.
+                  </p>
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => onNavigate?.('upload')}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Upload Files</span>
+                    </button>
+                    <button
+                      onClick={() => onOpenNoteModal?.()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Add Note</span>
+                    </button>
                   </div>
                 </div>
+              ) : (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-12 items-center gap-6">
+                  {/* SVG Donut Circle */}
+                  <div className="sm:col-span-5 flex flex-col items-center justify-center relative">
+                    <div className="relative w-44 h-44 flex items-center justify-center">
+                      <svg viewBox="0 0 140 140" className="w-full h-full transform -rotate-90">
+                        {/* Background track circle */}
+                        <circle
+                          cx="70"
+                          cy="70"
+                          r={donutRadius}
+                          fill="transparent"
+                          stroke="#f1f5f9"
+                          strokeWidth="15"
+                        />
+                        {/* Colored Donut Segments */}
+                        {donutSegments.map((seg) => {
+                          const isHovered = hoveredSegment === seg.key;
+                          return (
+                            <circle
+                              key={seg.key}
+                              cx="70"
+                              cy="70"
+                              r={donutRadius}
+                              fill="transparent"
+                              stroke={seg.color}
+                              strokeWidth={isHovered ? "20" : "15"}
+                              strokeDasharray={seg.strokeDasharray}
+                              strokeDashoffset={seg.strokeDashoffset}
+                              strokeLinecap="round"
+                              className="transition-all duration-300 cursor-pointer"
+                              onMouseEnter={() => setHoveredSegment(seg.key)}
+                              onMouseLeave={() => setHoveredSegment(null)}
+                            />
+                          );
+                        })}
+                      </svg>
 
-                {/* Clean Type Legend with Hover Highlighting */}
-                <div className="sm:col-span-7 space-y-2">
-                  {categoryBreakdown.items.map((item) => {
-                    const isHovered = hoveredSegment === item.key;
-                    return (
-                      <div
-                        key={item.key}
-                        onMouseEnter={() => setHoveredSegment(item.key)}
-                        onMouseLeave={() => setHoveredSegment(null)}
-                        className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                          isHovered
-                            ? 'bg-slate-50 border-indigo-300 ring-2 ring-indigo-500/10 shadow-xs'
-                            : 'bg-white border-slate-100 hover:border-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className="w-3 h-3 rounded-full shrink-0 shadow-xs"
-                            style={{ backgroundColor: item.color }}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-800 truncate">{item.label}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{item.desc}</p>
+                      {/* Donut Center Count & Label */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
+                        <span className="text-2xl font-black text-slate-900 tracking-tight">
+                          {hoveredSegment
+                            ? categoryBreakdown.items.find(i => i.key === hoveredSegment)?.count
+                            : categoryBreakdown.total}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider truncate max-w-[90px]">
+                          {hoveredSegment
+                            ? categoryBreakdown.items.find(i => i.key === hoveredSegment)?.label.split(' ')[0]
+                            : (isTr ? 'Toplam Belge' : 'Total Docs')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clean Type Legend with Hover Highlighting */}
+                  <div className="sm:col-span-7 space-y-2">
+                    {categoryBreakdown.items.map((item) => {
+                      const isHovered = hoveredSegment === item.key;
+                      return (
+                        <div
+                          key={item.key}
+                          onMouseEnter={() => setHoveredSegment(item.key)}
+                          onMouseLeave={() => setHoveredSegment(null)}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                            isHovered
+                              ? 'bg-slate-50 border-indigo-300 ring-2 ring-indigo-500/10 shadow-xs'
+                              : 'bg-white border-slate-100 hover:border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className="w-3 h-3 rounded-full shrink-0 shadow-xs"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate">{item.label}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{item.desc}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            <span className="text-xs font-extrabold text-slate-900 font-mono">
+                              {item.count} {isTr ? 'adet' : 'files'}
+                            </span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${item.lightBg} ${item.textColor}`}>
+                              %{item.percent}
+                            </span>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2 shrink-0 ml-2">
-                          <span className="text-xs font-extrabold text-slate-900 font-mono">
-                            {item.count} {isTr ? 'adet' : 'files'}
-                          </span>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${item.lightBg} ${item.textColor}`}>
-                            %{item.percent}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Bottom Insight Pill */}
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>{isTr ? 'Arsa, kat karşılığı ve tüm tapular AI hafızasında' : 'All deeds, parcel terms & notes indexed in AI memory'}</span>
+                <span>
+                  {documents.length > 0
+                    ? (isTr ? 'Arsa, kat karşılığı ve tüm tapular AI hafızasında' : 'All deeds, parcel terms & notes indexed in AI memory')
+                    : (isTr ? 'Deponuz hazır · İlk belgenizi yükleyerek AI analizini başlatın' : 'Warehouse ready · Upload your first document to activate AI analysis')}
+                </span>
               </span>
               <button
-                onClick={() => onNavigate?.('documents')}
+                onClick={() => onNavigate?.('organizations')}
                 className="font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>{isTr ? 'Dokümanları Listele' : 'List All Documents'}</span>
+                <span>{isTr ? 'Portföylerde İncele' : 'Browse in Portfolios'}</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
@@ -628,50 +675,65 @@ const Dashboard = ({
 
               {/* Horizontal Bar Chart List */}
               <div className="mt-4 space-y-3">
-                {orgBreakdown.map((org) => (
-                  <div
-                    key={org.id}
-                    onClick={() => onSelectOrg?.(org.id)}
-                    className="group p-2.5 rounded-xl hover:bg-slate-50/80 transition-all cursor-pointer border border-transparent hover:border-slate-200/80"
-                  >
-                    <div className="flex items-center justify-between text-xs mb-1.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: org.color }}
-                        />
-                        <span className="font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
-                          {org.name}
-                        </span>
-                        {org.foldersCount > 0 && (
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            ({org.foldersCount} {isTr ? 'klasör' : 'folders'})
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-extrabold text-slate-900 font-mono text-xs">
-                          {org.count} {isTr ? 'doküman' : 'docs'}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-500 font-mono">
-                          %{org.percent}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Progress Track */}
-                    <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500 group-hover:opacity-90"
-                        style={{
-                          width: `${Math.max(org.percent, 4)}%`,
-                          backgroundColor: org.color,
-                        }}
-                      />
-                    </div>
+                {orgBreakdown.length === 0 ? (
+                  <div className="text-center py-7 px-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400">
+                    <Building2 className="w-7 h-7 text-slate-300 mx-auto mb-1.5 opacity-70" />
+                    <p className="font-semibold text-slate-600">{isTr ? 'Henüz aktif portföy bulunmuyor' : 'No active portfolios created yet'}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{isTr ? 'Belgelerinizi gruplamak için portföy oluşturabilirsiniz.' : 'Create portfolios to organize and group your documents.'}</p>
+                    <button
+                      onClick={() => onNavigate?.('organizations')}
+                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isTr ? 'İlk Portföyü Oluştur' : 'Create First Portfolio'}</span>
+                    </button>
                   </div>
-                ))}
+                ) : (
+                  orgBreakdown.map((org) => (
+                    <div
+                      key={org.id}
+                      onClick={() => onSelectOrg?.(org.id)}
+                      className="group p-2.5 rounded-xl hover:bg-slate-50/80 transition-all cursor-pointer border border-transparent hover:border-slate-200/80"
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: org.color }}
+                          />
+                          <span className="font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                            {org.name}
+                          </span>
+                          {org.foldersCount > 0 && (
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              ({org.foldersCount} {isTr ? 'klasör' : 'folders'})
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-extrabold text-slate-900 font-mono text-xs">
+                            {org.count} {isTr ? 'doküman' : 'docs'}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 font-mono">
+                            %{org.percent}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progress Track */}
+                      <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500 group-hover:opacity-90"
+                          style={{
+                            width: `${Math.max(org.percent, 4)}%`,
+                            backgroundColor: org.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -682,10 +744,10 @@ const Dashboard = ({
                 <span>{isTr ? `Toplam ${stats.vectors} RAG parçası (Chunks) hazır` : `Total ${stats.vectors} RAG chunks embedded and active`}</span>
               </span>
               <button
-                onClick={() => onNavigate?.('inspector')}
+                onClick={() => onNavigate?.('upload')}
                 className="font-semibold text-violet-600 hover:text-violet-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>{isTr ? 'Vektörleri İncele' : 'Inspect Vectors'}</span>
+                <span>{isTr ? 'AI ile Sorgula' : 'Query with AI'}</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
@@ -694,63 +756,7 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            4. AI QUICK PROMPT SUGGESTIONS (SMART CHIPS)
-        ───────────────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-900">{isTr ? 'Hızlı Yapay Zeka Soruları' : 'AI Suggested Inquiries'}</h2>
-                <p className="text-[11px] text-slate-500">{isTr ? 'Mevcut portföy ve belgelerinize göre hazırlanmış tek tıkla sorulabilecek sorular' : 'One-click inquiries generated from your active portfolios and deeds'}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => onNavigate?.('upload')}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
-            >
-              <span>{isTr ? 'Sohbete Git' : 'Go to Chat'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {samplePrompts.map((p, idx) => (
-              <div
-                key={idx}
-                onClick={() => onAskAi?.(p.desc)}
-                className="group p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 hover:bg-indigo-50/50 hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span
-                      className="text-[9px] font-bold px-2 py-0.5 rounded-md text-white"
-                      style={{ backgroundColor: p.color }}
-                    >
-                      {p.tag}
-                    </span>
-                    <Sparkles className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                  </div>
-                  <h3 className="text-xs font-bold text-slate-900 group-hover:text-indigo-900 transition-colors">
-                    {p.title}
-                  </h3>
-                  <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed">
-                    {p.desc}
-                  </p>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-indigo-600 font-semibold">
-                  <span>{isTr ? 'Yapay Zekaya Sor' : 'Ask AI Butler'}</span>
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ─────────────────────────────────────────────────────────────
-            5. ORGANIZATIONS / CLIENTS SHOWCASE
+            4. ORGANIZATIONS / CLIENTS SHOWCASE
         ───────────────────────────────────────────────────────────── */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -767,70 +773,91 @@ const Dashboard = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {organizations.filter(o => !o.is_system).map(org => {
-              const orgFolders = org.folders || [];
-              const orgDocCount = org.document_count || 0;
-              return (
-                <div
-                  key={org.id}
-                  onClick={() => onSelectOrg?.(org.id)}
-                  className="group bg-white border border-slate-200/90 hover:border-indigo-300 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs"
-                          style={{ backgroundColor: `${org.color}18`, color: org.color }}
-                        >
-                          <Building2 className="w-5 h-5" />
+          {userOrgs.length === 0 ? (
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">{isTr ? 'Henüz Portföy Oluşturulmadı' : 'No Portfolios Created Yet'}</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+                {isTr
+                  ? 'Müşterileriniz veya projeleriniz için portföyler ve alt klasörler oluşturarak belgelerinizi düzenleyebilirsiniz.'
+                  : 'Organize your documents by creating client portfolios and sub-folders in Portfolio Explorer.'}
+              </p>
+              <button
+                onClick={() => onNavigate?.('organizations')}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isTr ? 'Yeni Portföy Oluştur' : 'Create New Portfolio'}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {userOrgs.map(org => {
+                const orgFolders = org.folders || [];
+                const orgDocCount = org.document_count || 0;
+                return (
+                  <div
+                    key={org.id}
+                    onClick={() => onSelectOrg?.(org.id)}
+                    className="group bg-white border border-slate-200/90 hover:border-indigo-300 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs"
+                            style={{ backgroundColor: `${org.color}18`, color: org.color }}
+                          >
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-700 transition-colors">
+                              {org.name}
+                            </h3>
+                            {org.description ? (
+                              <p className="text-[10px] text-slate-400 truncate">{org.description}</p>
+                            ) : (
+                              <p className="text-[10px] text-slate-400">{isTr ? 'Özel müşteri portföyü' : 'Client portfolio'}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-700 transition-colors">
-                            {org.name}
-                          </h3>
-                          {org.description ? (
-                            <p className="text-[10px] text-slate-400 truncate">{org.description}</p>
-                          ) : (
-                            <p className="text-[10px] text-slate-400">{isTr ? 'Özel müşteri portföyü' : 'Client portfolio'}</p>
-                          )}
-                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                          {orgDocCount} {isTr ? 'doküman' : 'docs'}
+                        </span>
                       </div>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
-                        {orgDocCount} {isTr ? 'doküman' : 'docs'}
-                      </span>
+
+                      {/* Folder Pills in Card */}
+                      {orgFolders.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">{isTr ? 'Klasörler' : 'Folders'}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {orgFolders.map(folder => (
+                              <span
+                                key={folder}
+                                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
+                              >
+                                <Folder className="w-2.5 h-2.5 text-amber-500" />
+                                <span className="truncate max-w-[120px]">{folder}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 mt-2 italic">{isTr ? 'Henüz klasör oluşturulmadı' : 'No sub-folders created yet'}</p>
+                      )}
                     </div>
 
-                    {/* Folder Pills in Card */}
-                    {orgFolders.length > 0 ? (
-                      <div className="mt-3">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">{isTr ? 'Klasörler' : 'Folders'}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {orgFolders.map(folder => (
-                            <span
-                              key={folder}
-                              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
-                            >
-                              <Folder className="w-2.5 h-2.5 text-amber-500" />
-                              <span className="truncate max-w-[120px]">{folder}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 mt-2 italic">{isTr ? 'Henüz klasör oluşturulmadı' : 'No sub-folders created yet'}</p>
-                    )}
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
+                      <span>{isTr ? 'Dosyaları Gezginle Aç' : 'Open in Explorer'}</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
-                    <span>{isTr ? 'Dosyaları Gezginle Aç' : 'Open in Explorer'}</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
@@ -845,7 +872,7 @@ const Dashboard = ({
                 <h2 className="text-sm font-bold text-slate-900">{t('recentDocsTitle')}</h2>
               </div>
               <button
-                onClick={() => onNavigate?.('documents')}
+                onClick={() => onNavigate?.('organizations')}
                 className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
               >
                 <span>{t('viewAllDocs')}</span>
@@ -862,17 +889,17 @@ const Dashboard = ({
                 {documents.slice(0, 6).map((doc) => {
                   const isPdf = doc.name?.toLowerCase().endsWith('.pdf');
                   const isImg = /\.(png|jpg|jpeg|webp|bmp|gif)$/i.test(doc.name);
-                  const isWhatsApp = doc.doc_type === 'whatsapp' || doc.name?.toLowerCase().includes('whatsapp');
+                  const isNote = doc.doc_type === 'note' || doc.name?.toLowerCase().includes('note') || doc.name?.toLowerCase().startsWith('wa_');
 
                   return (
                     <div
                       key={doc.name}
-                      onClick={() => onViewDocument ? onViewDocument(doc.name) : onNavigate?.('documents')}
+                      onClick={() => onViewDocument ? onViewDocument(doc.name) : onNavigate?.('organizations')}
                       className="group flex items-center justify-between py-3 hover:bg-slate-50/80 px-2 rounded-xl transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                          isWhatsApp
+                          isNote
                             ? 'bg-emerald-50 text-emerald-600'
                             : isImg
                             ? 'bg-amber-50 text-amber-600'
@@ -880,7 +907,7 @@ const Dashboard = ({
                             ? 'bg-red-50 text-red-600'
                             : 'bg-indigo-50 text-indigo-600'
                         }`}>
-                          {isWhatsApp ? <MessageSquare className="w-4 h-4" /> : isImg ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                          {isNote ? <FileText className="w-4 h-4" /> : isImg ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors" title={doc.name}>
@@ -917,18 +944,16 @@ const Dashboard = ({
             )}
           </div>
 
-          {/* Right: Quick Note & WhatsApp Intake Card */}
+          {/* Right: Quick Note & Text Intake Card */}
           <div className="space-y-4">
             <div className="rounded-3xl p-6 bg-gradient-to-br from-emerald-600 to-teal-800 text-white shadow-md flex flex-col justify-between">
               <div>
                 <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center mb-3 backdrop-blur-xs">
-                  <MessageSquare className="w-5 h-5 text-white" />
+                  <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-sm font-bold">{isTr ? 'Hızlı Not & WhatsApp Girişi' : 'Quick Note & WhatsApp Intake'}</h3>
+                <h3 className="text-sm font-bold">Quick Note & Memo Intake</h3>
                 <p className="text-xs text-emerald-100 mt-1.5 leading-relaxed">
-                  {isTr
-                    ? 'Danışman mesajlarını, telefon görüşmelerini veya fiyat güncellemelerini ekleyin; Depo Yöneticisi doğru rafa yerleştirsin.'
-                    : 'Log broker messages, call transcripts or price updates; Document Butler organizes them immediately into vector storage.'}
+                  Log client memos, meeting transcripts, or price updates; your AI Assistant organizes them immediately into vector storage.
                 </p>
               </div>
 
@@ -938,13 +963,13 @@ const Dashboard = ({
                   className="w-full py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-98 flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>{isTr ? '+ Metin / Not Ekle' : '+ Add Note / Text'}</span>
+                  <span>Add Note / Text</span>
                 </button>
                 <button
                   onClick={() => onNavigate?.('upload')}
                   className="w-full py-2 bg-emerald-700/60 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1"
                 >
-                  <span>{isTr ? 'WhatsApp & Yükleme Merkezi' : 'WhatsApp & Upload Center'}</span>
+                  <span>Upload & AI Center</span>
                   <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
@@ -954,12 +979,10 @@ const Dashboard = ({
             <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs">
               <div className="flex items-center gap-2.5 mb-2">
                 <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                <h4 className="text-xs font-bold text-slate-900">{isTr ? 'Depo & Sistem Durumu' : 'Repository Status'}</h4>
+                <h4 className="text-xs font-bold text-slate-900">Repository Status</h4>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                {isTr
-                  ? 'Tüm veritabanı yerel ortamda korunmaktadır. OpenAI embedding motoru ve cosine benzerlik araması devrededir.'
-                  : 'All vector embeddings stored locally with Chroma DB. OpenAI embedding engine and cosine similarity search are active.'}
+                All vector embeddings stored locally with Chroma DB. OpenAI embedding engine and cosine similarity search are active.
               </p>
             </div>
           </div>

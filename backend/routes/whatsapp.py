@@ -122,33 +122,33 @@ async def simulate_whatsapp_message(req: SimulateWhatsAppRequest):
     Runs the full pipeline: AI structuring -> categorization -> chunking -> vector embedding.
     """
     if not req.message.strip():
-        raise HTTPException(status_code=400, detail="Mesaj içeriği boş olamaz")
+        raise HTTPException(status_code=400, detail="Message content cannot be empty")
 
     result = await process_whatsapp_text_note(
         text_content=req.message,
-        sender_phone=req.sender_phone or "+905321234567",
-        sender_name=req.sender_name or "Emlak Danışmanı",
+        sender_phone=req.sender_phone or "+12025550199",
+        sender_name=req.sender_name or "Real Estate Agent",
     )
 
-    org_name = result.get("org_name", "Genel")
-    folder = result.get("folder", "WhatsApp Notları")
-    title = result.get("title", "Portföy Notu")
+    org_name = result.get("org_name", "General")
+    folder = result.get("folder", "WhatsApp Notes")
+    title = result.get("title", "Portfolio Note")
 
     reply_text = (
-        f"🏢 *MainChunk Depo Yöneticisi*\n\n"
-        f"✅ Sayın {req.sender_name or 'Danışman'},\n"
-        f"Gönderdiğiniz not teslim alındı ve depoya yerleştirildi.\n\n"
-        f"📦 *Raf (Portföy):* {org_name}\n"
-        f"📁 *Klasör:* {folder}\n"
-        f"🏷️ *Başlık:* {title}\n"
-        f"📑 *Arşiv Kodu:* `{result.get('filename')}`\n\n"
-        f"💡 *Özet:* {result.get('summary', '')}\n\n"
-        f"🔍 Bu bilgi artık RAG hafızasında ve yapay zeka sorgularında hazırdır."
+        f"🏢 *MainChunk Warehouse Assistant*\n\n"
+        f"✅ Hello {req.sender_name or 'Agent'},\n"
+        f"Your message was received and archived in the warehouse.\n\n"
+        f"📦 *Portfolio:* {org_name}\n"
+        f"📁 *Folder:* {folder}\n"
+        f"🏷️ *Title:* {title}\n"
+        f"📑 *Archive Code:* `{result.get('filename')}`\n\n"
+        f"💡 *Summary:* {result.get('summary', '')}\n\n"
+        f"🔍 This information is now indexed in vector memory and ready for AI queries."
     )
 
     return {
         "status": "success",
-        "message": "WhatsApp notu başarıyla işlendi ve portföye kaydedildi.",
+        "message": "WhatsApp note successfully processed and indexed.",
         "reply_text": reply_text,
         "data": result,
     }

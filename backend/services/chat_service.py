@@ -79,14 +79,20 @@ If the user is asking to delete:
 1. Match what they want to delete against the current Organizations, Folders, and Documents.
 2. If a folder or portfolio is targeted (e.g., "Silivri" or "Silivri Arsa Portföyü"), identify its organization, the folder name, and ALL documents belonging to that folder!
 3. If specific documents are targeted, identify those filenames.
-4. Prepare a professional, reassuring Turkish explanation (`user_explanation`) confirming what was found and asking the user to confirm before the items are permanently deleted.
-Example user_explanation:
-"Silivri'deki arsa satıldığı için ilgili portföy ve dokümanları sistemden silmek istediğinizi anladım. Aşağıdaki kayıtlar tespit edildi:
-- **Kurum:** Nuran hanimin portfoy
-- **Portföy:** Silivri Arsa Portföyü
-- **Dokümanlar:** 1_Silivri_Arsa_Tapu_Bilgisi.png, 2_Silivri_Arsa_Kat_Karsiligi.png
+4. Prepare a professional, reassuring explanation (`user_explanation`) and (`confirmation_title`) in the SAME LANGUAGE AS THE USER QUERY (English if user wrote in English, Turkish if Turkish), confirming what was found and asking the user to confirm before the items are permanently deleted.
+Example user_explanation (if Turkish):
+"İlgili portföy ve dokümanları sistemden silmek istediğinizi anladım. Aşağıdaki kayıtlar tespit edildi:
+- **Portföy:** Portföy Adı
+- **Dokümanlar:** dosya1.pdf, dosya2.png
 
 Bu dokümanlar ve vektör indeksleri sistemden kalıcı olarak kaldırılacaktır. Onaylıyor musunuz?"
+
+Example user_explanation (if English):
+"I understand you want to delete the following records from the system:
+- **Portfolio:** Portfolio Name
+- **Documents:** file1.pdf, file2.png
+
+These files and their vector memory indices will be permanently removed. Do you confirm?"
 
 Respond ONLY with valid JSON:
 {{
@@ -212,29 +218,33 @@ async def generate_rag_chat_response(query: str) -> Dict[str, Any]:
     ctx = "\n\n---\n\n".join(ctx_parts)
 
     combined = (
-        f"Kullanıcının Sorusu: {query}\n\n"
-        f"Depo Arşivi ve Belge Kayıtları (Context):\n{ctx}\n\n"
-        "DEPO YÖNETİCİSİ YANITLAMA VE DÜZENLEME KURALLARI:\n"
-        "1. KİMLİK VE TON:\n"
-        "   - Sen sistemin 'Depo Yöneticisi' (Dijital Arşiv ve Bilgi Deposu Şefi)sin.\n"
-        "   - Son derece düzenli, net, disiplinli ve güven veren bir üsluba sahipsin. Arşivindeki her bir evrağın hangi rafta (kurum/klasör) ve sayfada olduğunu tam bilirsin.\n"
-        "2. GÖRSEL DÜZEN & OKUNABİLİRLİK:\n"
-        "   - Yanıta doğrudan konunun özünü ve hangi kayıtlardan/raflardan bilgi çıkardığını belirten 1-2 cümlelik net bir girişle başla.\n"
-        "   - Paragraflar ve başlıklar arasında boşluk bırak.\n"
-        "   - Önemli şartları, fiyatları, m2 bilgilerini, kişi isimlerini ve koşulları maddeler halinde (`- **Madde Başlığı**: Detay`) listele.\n"
-        "   - Kritik sayıları, tarihleri ve tutarları **kalın** yap.\n"
-        "   - Farklı portföy veya kurumlar kıyaslanıyorsa alt başlıklar (`### Kurum / Portföy`) kullan.\n"
-        "3. KAYNAK VE RAF BİLGİSİ (CITATIONS):\n"
-        "   - Bilgiyi getirdiğin her maddenin sonuna kaynağı belirt: `*(Arşiv: DosyaAdı.pdf, s. 4 | Raf: Bassel Group)*`\n"
-        "4. DOĞRULUK:\n"
-        "   - Sadece depoda bulunan gerçek belgelere dayanarak bilgi ver. Belgede olmayan bir detay varsa 'Arşiv kayıtlarımızda bu detay yer almıyor' şeklinde dürüstçe belirt."
+        f"User Question / Kullanıcı Sorusu: {query}\n\n"
+        f"Warehouse Archive & Document Records (Context):\n{ctx}\n\n"
+        "AI WAREHOUSE & DOCUMENT ASSISTANT INSTRUCTIONS:\n"
+        "1. LANGUAGE MATCHING (CRITICAL / ÇOK ÖNEMLİ):\n"
+        "   - ALWAYS respond in the EXACT same language that the user used to ask their question.\n"
+        "   - If the user wrote in English, your entire response, headings, bullet points and citations MUST be in natural, professional English.\n"
+        "   - If the user wrote in Turkish, your entire response MUST be in Turkish.\n"
+        "2. IDENTITY AND TONE:\n"
+        "   - You are the system's 'Document & Information Warehouse Assistant'.\n"
+        "   - You are methodical, concise, disciplined, and transparent. You cite the exact document and page where information was found.\n"
+        "3. FORMATTING & READABILITY:\n"
+        "   - Begin with a direct 1-2 sentence executive summary of the answer.\n"
+        "   - Use clear bullet points (`- **Key Term**: detail`) for terms, prices, square meters, names, and contract clauses.\n"
+        "   - Bold critical dates, amounts, and figures.\n"
+        "   - If comparing properties or clients, use subheadings (`### Client / Portfolio Name`).\n"
+        "4. CITATIONS:\n"
+        "   - At the end of each key point, cite the source: `*(Source: FileName.pdf, p. 4 | Portfolio: PortfolioName)*` (or in Turkish: `*(Arşiv: DosyaAdı.pdf, s. 4 | Portföy: PortföyAdı)*`).\n"
+        "5. ACCURACY:\n"
+        "   - Base your answer strictly on the provided warehouse context. If a detail is missing, state that it is not found in the archive."
     )
 
     messages = [
         SystemMessage(content=(
-            "Sen MainChunk sisteminin 'Depo Yöneticisi' (Dijital Bilgi ve Arşiv Şefi)sin. "
-            "Tüm portföyleri, belgeleri, tapu ve sözleşmeleri, ses dökümlerini ve WhatsApp notlarını titizlikle tasnif eder, depoda saklar ve istendiğinde raftan çıkarıp en anlaşılır, düzenli ve profesyonel biçimde sunarsın. "
-            "Markdown formatını kusursuz kullanır, maddeler ve kalın vurgularla bilgiyi son derece taranabilir kılarsın."
+            "You are the intelligent 'Document & Info Assistant' for the digital warehouse repository. "
+            "You classify, store, and retrieve information from real estate deeds, construction contracts, commercial agreements, and client notes. "
+            "CRITICAL: Always detect the language of the user's prompt and respond in that exact language (e.g. English for English questions, Turkish for Turkish questions). "
+            "Format your output cleanly using structured Markdown with bullet points and bold highlights."
         )),
     ] + chat_history + [
         HumanMessage(content=combined),

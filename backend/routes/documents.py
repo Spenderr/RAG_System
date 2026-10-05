@@ -471,14 +471,14 @@ async def create_note_document(req: CreateNoteRequest):
         try:
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
             prompt = (
-                "Aşağıda bir WhatsApp mesajlaşması, ses dökümü veya hızlı tutulmuş bir portföy notu bulunmaktadır.\n"
-                "Bu metni RAG yapay zeka sistemi ve kullanıcı için son derece anlaşılır, madde madde düzenlenmiş bir Portföy Notu haline getir.\n\n"
-                "Kurallar:\n"
-                "1. En üste açıklayıcı bir '# Portföy / Görüşme Özeti' başlığı koy.\n"
-                "2. İrtibat kişileri, telefonlar, fiyatlar, tarihler, adres/lokasyon, şartlar ve talepleri madde madde (bullet points) ve net başlıklarla listele.\n"
-                "3. En alta '---\\n### Orijinal Metin / Mesaj Dökümü\\n' başlığı altında orijinal metni de ekle.\n"
-                "4. Yanıtı yalnızca Türkçe ver.\n\n"
-                f"Metin:\n{req.content}"
+                "Below is a WhatsApp transcript, audio memo, or quick client/portfolio note.\n"
+                "Format this text into a clean, well-structured, professional Document & Portfolio Note for the digital warehouse repository.\n\n"
+                "Rules:\n"
+                "1. Place a descriptive top header (e.g. '# Portfolio & Meeting Summary').\n"
+                "2. List contacts, phones, prices, dates, location/address, contract terms, and client requests in organized bullet points with bold highlights.\n"
+                "3. Append '---\\n### Original Text / Message Log\\n' at the bottom followed by the raw input.\n"
+                "4. All formatted output must be in English.\n\n"
+                f"Text:\n{req.content}"
             )
             ai_res = await llm.ainvoke(prompt)
             if ai_res.content and ai_res.content.strip():
@@ -520,12 +520,12 @@ async def create_note_document(req: CreateNoteRequest):
         if ai_result.get("confidence") == "high" and ai_result.get("suggested_org_id"):
             org_id = ai_result["suggested_org_id"]
 
-    tags = req.tags if req.tags else ([req.doc_type] if req.doc_type else ["whatsapp"])
+    tags = req.tags if req.tags else ([req.doc_type] if req.doc_type else ["note"])
     organizations_db["document_assignments"][filename] = {
         "org_id": org_id or "__unassigned__",
         "folder": req.folder.strip() if req.folder else "",
         "tags": tags,
-        "doc_type": req.doc_type or "whatsapp",
+        "doc_type": req.doc_type or "note",
         "assigned_at": datetime.now().isoformat(),
         "auto_detected": False,
     }
@@ -537,7 +537,7 @@ async def create_note_document(req: CreateNoteRequest):
         "chunk_count": len(chunks),
         "org_id": org_id or "__unassigned__",
         "folder": req.folder.strip() if req.folder else "",
-        "doc_type": req.doc_type or "whatsapp",
+        "doc_type": req.doc_type or "note",
     }
 
 

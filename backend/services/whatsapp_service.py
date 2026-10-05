@@ -38,24 +38,24 @@ async def process_whatsapp_text_note(
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
     structure_prompt = (
-        "Sen profesyonel bir gayrimenkul / emlak asistanısın. Danışmandan gelen ham WhatsApp mesajını analiz et.\n"
-        "Mesaj:\n"
+        "You are a professional real estate and document management assistant. Analyze the incoming WhatsApp message/note.\n"
+        "Message:\n"
         f"\"{text_content}\"\n\n"
-        "Görevlerin:\n"
-        "1. Bu not için 3-5 kelimelik kısa ve net bir başlık üret (örn: 'Silivri Arsa Fiyat Güncellemesi').\n"
-        "2. İçeriği madde madde, temiz ve anlaşılır bir '# Portföy / Görüşme Notu' haline getir (fiyat, lokasyon, kişi, şartlar).\n"
-        "3. Klasör önerisi yap (örn: 'Arsa Portföyü', 'Satılık Daireler', 'Müşteri Görüşmeleri').\n\n"
-        "Lütfen aşağıdaki JSON formatında yanıt ver:\n"
+        "Tasks:\n"
+        "1. Generate a concise 3-5 word English title (e.g. 'Paris Property Price Update').\n"
+        "2. Format the content into a clean, well-structured English '# Portfolio & Client Note' with bullet points (prices, location, contacts, terms).\n"
+        "3. Suggest a clean English folder (e.g. 'Land Portfolios', 'Apartment Sales', 'Client Inquiries').\n\n"
+        "Respond strictly in this JSON format:\n"
         "{\n"
-        "  \"title\": \"Kısa Başlık\",\n"
-        "  \"formatted_content\": \"## Başlık\\n\\n- Madde 1...\",\n"
-        "  \"suggested_folder\": \"Klasör Adı\"\n"
+        "  \"title\": \"Short English Title\",\n"
+        "  \"formatted_content\": \"## Title\\n\\n- Bullet 1...\",\n"
+        "  \"suggested_folder\": \"Folder Name\"\n"
         "}"
     )
 
-    title = f"wa_not_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    title = f"wa_note_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     formatted_content = text_content
-    suggested_folder = "WhatsApp Notları"
+    suggested_folder = "WhatsApp Notes"
 
     try:
         res = await llm.ainvoke(structure_prompt)
@@ -74,7 +74,7 @@ async def process_whatsapp_text_note(
     except Exception as e:
         print(f"[whatsapp_service] AI format warning: {e}")
 
-    clean_title = re.sub(r'[^a-zA-Z0-9_\-çğıöşüÇĞİÖŞÜ\s]', '', title).strip().replace(' ', '_')
+    clean_title = re.sub(r'[^a-zA-Z0-9_\-\s]', '', title).strip().replace(' ', '_')
     if not clean_title:
         clean_title = f"wa_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
@@ -89,9 +89,9 @@ async def process_whatsapp_text_note(
     full_doc_content = (
         f"{formatted_content}\n\n"
         f"---\n"
-        f"📱 **Kaynak:** WhatsApp ({sender_name or sender_phone or 'Danışman'})\n"
-        f"⏱️ **Kayıt Tarihi:** {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
-        f"📝 **Ham Mesaj:** {text_content}"
+        f"📱 **Source:** WhatsApp ({sender_name or sender_phone or 'Client'})\n"
+        f"⏱️ **Recorded At:** {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
+        f"📝 **Raw Message:** {text_content}"
     )
 
     with open(file_path, "w", encoding="utf-8") as f:
@@ -123,7 +123,7 @@ async def process_whatsapp_text_note(
 
     ai_org = await ai_detect_organization(filename, full_doc_content)
     org_id = ai_org.get("suggested_org_id") or "__unassigned__"
-    org_name = ai_org.get("suggested_org_name") or "Genel"
+    org_name = ai_org.get("suggested_org_name") or "General"
 
     if org_id in organizations_db["organizations"]:
         org = organizations_db["organizations"][org_id]
@@ -135,8 +135,8 @@ async def process_whatsapp_text_note(
     organizations_db["document_assignments"][filename] = {
         "org_id": org_id,
         "folder": suggested_folder,
-        "tags": ["whatsapp", "not", "mobil"],
-        "doc_type": "whatsapp",
+        "tags": ["note", "memo"],
+        "doc_type": "note",
         "assigned_at": datetime.now().isoformat(),
         "auto_detected": True,
     }

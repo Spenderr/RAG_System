@@ -2,25 +2,24 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Upload from './components/Upload';
-import Documents from './components/Documents';
-import Inspector from './components/Inspector';
 import Organizations from './components/Organizations';
 import Tour from './components/Tour';
+
+const VALID_VIEWS = ['dashboard', 'upload', 'organizations'];
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [showTour, setShowTour] = useState(false);
-  const [inspectorDocName, setInspectorDocName] = useState(null);
-  const [inspectorTraceInfo, setInspectorTraceInfo] = useState(null);
 
   // Cross-view state for direct deep linking
   const [selectedOrgId, setSelectedOrgId] = useState(null);
+  const [selectedDocName, setSelectedDocName] = useState(null);
   const [openNoteOnMount, setOpenNoteOnMount] = useState(false);
   const [chatPrompt, setChatPrompt] = useState('');
   const [uploadMode, setUploadMode] = useState('files');
 
-  // Document reader modal state (shared across views)
-  const [readerDoc, setReaderDoc] = useState(null);
+  // Sanitize activeView if it somehow receives a removed view (documents / inspector)
+  const currentView = VALID_VIEWS.includes(activeView) ? activeView : 'dashboard';
 
   // Show tour on first visit
   useEffect(() => {
@@ -36,12 +35,20 @@ function App() {
   };
 
   const handleViewChange = (view) => {
-    if (view === activeView) return;
+    if (view === 'documents' || view === 'inspector') {
+      setActiveView('organizations');
+      return;
+    }
+    if (!VALID_VIEWS.includes(view)) {
+      setActiveView('dashboard');
+      return;
+    }
     setActiveView(view);
   };
 
   const handleSelectOrgFromDashboard = (orgId) => {
     setSelectedOrgId(orgId);
+    setSelectedDocName(null);
     setActiveView('organizations');
   };
 
@@ -55,45 +62,23 @@ function App() {
     setActiveView('upload');
   };
 
-  const handleGoToInspectorForDoc = (docName) => {
-    setInspectorDocName(docName);
-    setInspectorTraceInfo(null);
-    setActiveView('inspector');
-  };
-
-  const handleTraceGrounding = ({ docName, snippet, page, chunkIndex }) => {
-    setInspectorDocName(docName);
-    setInspectorTraceInfo({
-      docName,
-      snippet,
-      page,
-      chunkIndex,
-      timestamp: Date.now(),
-    });
-    setActiveView('inspector');
-  };
-
   const handleViewDocument = (docParam, page) => {
-    setActiveView('documents');
-    if (typeof docParam === 'object' && docParam !== null) {
-      setReaderDoc(docParam);
-    } else if (page) {
-      setReaderDoc({ docName: docParam, page });
-    } else {
-      setReaderDoc(docParam);
-    }
+    const docName = typeof docParam === 'object' && docParam !== null ? docParam.docName : docParam;
+    setSelectedDocName(docName);
+    setActiveView('organizations');
   };
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-800">
       <Sidebar
-        activeView={activeView}
+        activeView={currentView}
         setActiveView={handleViewChange}
         onShowTour={() => setShowTour(true)}
       />
       <main className="flex-1 overflow-hidden bg-slate-50 relative">
-        <div className={`w-full h-full ${activeView === 'dashboard' ? 'block page-transition' : 'hidden'}`}>
+        <div className={`w-full h-full ${currentView === 'dashboard' ? 'block page-transition' : 'hidden'}`}>
           <Dashboard
+            activeView={currentView}
             onNavigate={handleViewChange}
             onSelectOrg={handleSelectOrgFromDashboard}
             onAskAi={handleAskAiFromDashboard}
@@ -101,11 +86,9 @@ function App() {
             onViewDocument={handleViewDocument}
           />
         </div>
-        <div className={`w-full h-full ${activeView === 'upload' ? 'block page-transition' : 'hidden'}`}>
+        <div className={`w-full h-full ${currentView === 'upload' ? 'block page-transition' : 'hidden'}`}>
           <Upload
             onViewDocument={handleViewDocument}
-            onGoToInspector={handleGoToInspectorForDoc}
-            onTraceGrounding={handleTraceGrounding}
             initialChatPrompt={chatPrompt}
             onClearInitialPrompt={() => setChatPrompt('')}
             initialMode={uploadMode}
@@ -115,26 +98,14 @@ function App() {
             }}
           />
         </div>
-        <div className={`w-full h-full ${activeView === 'organizations' ? 'block page-transition' : 'hidden'}`}>
+        <div className={`w-full h-full ${currentView === 'organizations' ? 'block page-transition' : 'hidden'}`}>
           <Organizations
-            onViewDocument={handleViewDocument}
-            onGoToInspector={handleGoToInspectorForDoc}
+            activeView={currentView}
+            initialDocName={selectedDocName}
             initialOrgId={selectedOrgId}
             openNoteOnMount={openNoteOnMount}
             onClearInitialOrgId={() => setSelectedOrgId(null)}
-          />
-        </div>
-        <div className={`w-full h-full ${activeView === 'documents' ? 'block page-transition' : 'hidden'}`}>
-          <Documents
-            onSelectDocForInspector={handleGoToInspectorForDoc}
-            openReaderDoc={readerDoc}
-            onReaderDocHandled={() => setReaderDoc(null)}
-          />
-        </div>
-        <div className={`w-full h-full ${activeView === 'inspector' ? 'block page-transition' : 'hidden'}`}>
-          <Inspector
-            initialSelectedDocName={inspectorDocName}
-            traceInfo={inspectorTraceInfo}
+            onClearInitialDocName={() => setSelectedDocName(null)}
           />
         </div>
       </main>

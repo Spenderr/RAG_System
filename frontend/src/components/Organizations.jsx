@@ -5,7 +5,7 @@ import {
   FolderPlus, Folder, Layers, HelpCircle, RefreshCw,
   ChevronRight, ChevronLeft, ArrowRight, ArrowLeft, Tag, MoreHorizontal, Sparkles,
   ZoomIn, ZoomOut, Download, MessageSquare, Copy, StickyNote,
-  Send, Share2, Sparkle, CheckSquare, Square, RotateCcw, Maximize2, ExternalLink
+  Send, Share2, Sparkle, CheckSquare, Square, RotateCcw, Maximize2, Minimize2, ExternalLink
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -17,12 +17,22 @@ const COLORS = [
 // ─────────────────────────────────────────────────────────────────
 // Inline File Preview Panel
 // ─────────────────────────────────────────────────────────────────
-const InlinePreview = ({ doc, onClose, onDelete }) => {
+const InlinePreview = ({
+  doc,
+  onClose,
+  onDelete,
+  onPrevDoc,
+  onNextDoc,
+  hasPrevDoc,
+  hasNextDoc,
+  currentIndex = 0,
+  totalDocs = 1,
+}) => {
   const { language } = useLanguage();
   const isTr = language === 'tr';
   const isPdf = doc?.name?.toLowerCase().endsWith('.pdf');
   const isImg = /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(doc?.name || '');
-  const isWhatsApp = doc?.doc_type === 'whatsapp' || doc?.name?.toLowerCase().includes('whatsapp') || doc?.tags?.includes('whatsapp');
+  const isNote = doc?.doc_type === 'note' || doc?.name?.toLowerCase().includes('note') || doc?.tags?.includes('note');
   const [zoom, setZoom] = useState(1);
   const [isFit, setIsFit] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -37,12 +47,12 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
   const fileUrl = `/api/documents/${encodeURIComponent(doc.name)}/file`;
 
   return (
-    <div className="flex flex-col h-full bg-white border-l border-slate-200">
+    <div className="flex flex-col h-full bg-white relative">
       {/* Preview Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0 bg-white">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className={`p-1.5 rounded-lg shrink-0 ${
-            isWhatsApp
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0 bg-white z-20">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`p-2 rounded-xl shrink-0 ${
+            isNote
               ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
               : isImg
               ? 'bg-emerald-50 text-emerald-600'
@@ -50,28 +60,70 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
               ? 'bg-red-50 text-red-600'
               : 'bg-indigo-50 text-indigo-600'
           }`}>
-            {isWhatsApp ? <MessageSquare className="w-3.5 h-3.5" /> : isImg ? <ImageIcon className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+            {isNote ? <FileText className="w-4 h-4" /> : isImg ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
           </div>
           <div className="min-w-0">
-            <span className="text-xs font-semibold text-slate-800 truncate block max-w-[180px]" title={doc.name}>
+            <span className="text-sm font-bold text-slate-800 truncate block max-w-[320px] sm:max-w-md" title={doc.name}>
               {doc.name}
             </span>
-            {isWhatsApp && (
-              <span className="text-[10px] text-emerald-600 font-medium">
-                {isTr ? 'WhatsApp / Metin Notu' : 'WhatsApp / Quick Note'}
-              </span>
-            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              {isNote && (
+                <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+                  Text Note / Memo
+                </span>
+              )}
+              {doc.folder && (
+                <span className="text-[10px] text-indigo-600 font-medium bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
+                  📁 {doc.folder}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+
+        {/* Center: Doc Navigation bar */}
+        {totalDocs > 1 && (
+          <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 px-2.5 py-1 rounded-2xl shadow-2xs">
+            <button
+              onClick={onPrevDoc}
+              disabled={!hasPrevDoc}
+              className={`p-1.5 rounded-xl transition-all ${
+                hasPrevDoc
+                  ? 'text-slate-700 hover:text-indigo-600 hover:bg-white hover:shadow-xs active:scale-95 cursor-pointer'
+                  : 'text-slate-300 cursor-not-allowed'
+              }`}
+              title="Previous Document (← Left Arrow)"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono font-bold text-slate-700 px-2 select-none">
+              {currentIndex + 1} / {totalDocs}
+            </span>
+            <button
+              onClick={onNextDoc}
+              disabled={!hasNextDoc}
+              className={`p-1.5 rounded-xl transition-all ${
+                hasNextDoc
+                  ? 'text-slate-700 hover:text-indigo-600 hover:bg-white hover:shadow-xs active:scale-95 cursor-pointer'
+                  : 'text-slate-300 cursor-not-allowed'
+              }`}
+              title="Next Document (→ Right Arrow)"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 shrink-0">
           {(isPdf || isImg) && (
-            <>
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/80 p-0.5 rounded-xl">
               <button
                 onClick={() => {
                   setIsFit(false);
                   setZoom(z => Math.max(0.25, parseFloat((z - 0.25).toFixed(2))));
                 }}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white rounded-lg transition-colors cursor-pointer"
                 title={isTr ? "Küçült (-25%)" : "Zoom Out (-25%)"}
               >
                 <ZoomOut className="w-3.5 h-3.5" />
@@ -81,7 +133,7 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
                   setIsFit(true);
                   setZoom(1);
                 }}
-                className="px-2 py-0.5 text-[10px] font-mono text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors cursor-pointer"
+                className="px-2 py-0.5 text-[10px] font-mono font-semibold text-slate-600 hover:text-indigo-600 hover:bg-white rounded-md transition-colors cursor-pointer"
                 title={isTr ? "Ekrana Sığdır / Sıfırla" : "Fit to Screen / Reset"}
               >
                 {isFit && zoom === 1 ? (isTr ? 'Sığdır' : 'Fit') : `${Math.round(zoom * 100)}%`}
@@ -91,44 +143,70 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
                   setIsFit(false);
                   setZoom(z => Math.min(3, parseFloat((z + 0.25).toFixed(2))));
                 }}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white rounded-lg transition-colors cursor-pointer"
                 title={isTr ? "Büyüt (+25%)" : "Zoom In (+25%)"}
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
-            </>
+            </div>
           )}
+
           {/* Direct Download */}
           <a
             href={fileUrl}
             download={doc.name}
-            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+            className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-indigo-100"
             title={isTr ? "Dosyayı İndir" : "Download File"}
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-4 h-4" />
           </a>
+
           {/* Delete Document */}
           {onDelete && (
             <button
               onClick={() => onDelete(doc.name)}
-              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-100"
               title={isTr ? "Bu Dokümanı Sil" : "Delete This Document"}
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-4 h-4" />
             </button>
           )}
+
+          {/* Close Modal */}
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-            title={isTr ? "Kapat" : "Close"}
+            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer ml-1"
+            title={isTr ? "Kapat (ESC)" : "Close (ESC)"}
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Preview Content */}
-      <div className="flex-1 overflow-auto bg-slate-100 relative custom-scrollbar">
+      {/* Preview Content Area */}
+      <div className="flex-1 overflow-auto bg-slate-100 relative custom-scrollbar flex items-center justify-center">
+        {/* Floating Prev Button */}
+        {hasPrevDoc && (
+          <button
+            onClick={onPrevDoc}
+            className="absolute left-5 top-1/2 -translate-y-1/2 z-30 w-12 h-12 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-full shadow-2xl border border-slate-200/80 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95 cursor-pointer group"
+            title="Previous Document (← Left Arrow)"
+          >
+            <ChevronLeft className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
+          </button>
+        )}
+
+        {/* Floating Next Button */}
+        {hasNextDoc && (
+          <button
+            onClick={onNextDoc}
+            className="absolute right-5 top-1/2 -translate-y-1/2 z-30 w-12 h-12 bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-full shadow-2xl border border-slate-200/80 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95 cursor-pointer group"
+            title="Next Document (→ Right Arrow)"
+          >
+            <ChevronRight className="w-6 h-6 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        )}
+
         {isPdf ? (
           <div style={{ width: '100%', height: '100%' }}>
             <iframe
@@ -139,13 +217,13 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
             />
           </div>
         ) : isImg ? (
-          <div className="flex items-center justify-center min-h-full p-4 overflow-auto">
+          <div className="flex items-center justify-center w-full h-full p-6 overflow-auto">
             <img
               src={fileUrl}
               alt={doc.name}
-              className={`rounded-xl shadow-md transition-all duration-200 select-none ${
+              className={`rounded-2xl shadow-xl transition-all duration-200 select-none ${
                 isFit && zoom === 1
-                  ? 'max-w-full max-h-[calc(100vh-170px)] object-contain'
+                  ? 'max-w-full max-h-[calc(100vh-160px)] object-contain'
                   : 'max-w-none'
               }`}
               style={{
@@ -155,27 +233,34 @@ const InlinePreview = ({ doc, onClose, onDelete }) => {
             />
           </div>
         ) : (
-          <TextPreview filename={doc.name} isWhatsApp={isWhatsApp} />
+          <div className="w-full h-full">
+            <TextPreview filename={doc.name} isNote={isNote} />
+          </div>
         )}
       </div>
 
       {/* Meta footer */}
-      <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/80 shrink-0 flex items-center gap-3 text-[10px] text-slate-400 font-mono">
-        <span>{doc.chunk_count || 0} {isTr ? 'chunk' : 'chunks'}</span>
-        <span>·</span>
-        <span>{(doc.char_count || 0).toLocaleString()} {isTr ? 'karakter' : 'chars'}</span>
-        {doc.folder && (
-          <>
-            <span>·</span>
-            <span className="text-indigo-600 font-sans font-semibold">📁 {doc.folder}</span>
-          </>
-        )}
+      <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/90 shrink-0 flex items-center justify-between text-xs text-slate-500 font-mono">
+        <div className="flex items-center gap-3">
+          <span>{doc.chunk_count || 0} {isTr ? 'chunk' : 'chunks'}</span>
+          <span>·</span>
+          <span>{(doc.char_count || 0).toLocaleString()} {isTr ? 'karakter' : 'chars'}</span>
+          {doc.folder && (
+            <>
+              <span>·</span>
+              <span className="text-indigo-600 font-sans font-semibold">📁 {doc.folder}</span>
+            </>
+          )}
+        </div>
+        <div className="text-[11px] text-slate-400 font-sans">
+          {totalDocs > 1 && (isTr ? 'Gezinmek için ← ve → tuşlarını kullanabilirsiniz' : 'Use ← and → arrow keys to browse documents')}
+        </div>
       </div>
     </div>
   );
 };
 
-const TextPreview = ({ filename, isWhatsApp }) => {
+const TextPreview = ({ filename, isNote }) => {
   const { language } = useLanguage();
   const isTr = language === 'tr';
   const [text, setText] = useState('');
@@ -239,6 +324,7 @@ const TextPreview = ({ filename, isWhatsApp }) => {
       setText(editedText);
       setIsEditing(false);
       setSaveSuccess(true);
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (e) {
       setSaveError(e.message);
@@ -258,7 +344,7 @@ const TextPreview = ({ filename, isWhatsApp }) => {
       <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            {isWhatsApp ? (isTr ? '💬 WhatsApp / Not Kaydı' : '💬 WhatsApp / Quick Note') : (isTr ? '📄 Metin İçeriği' : '📄 Text Content')}
+            {isNote ? '📄 Quick Note / Memo' : '📄 Text Content'}
           </span>
           {saveSuccess && (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
@@ -436,7 +522,7 @@ const FileCard = ({
   const isTr = language === 'tr';
   const isPdf = doc.name.toLowerCase().endsWith('.pdf');
   const isImg = /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(doc.name);
-  const isWhatsApp = doc.doc_type === 'whatsapp' || doc.name.toLowerCase().includes('whatsapp') || doc.tags?.includes('whatsapp');
+  const isNote = doc.doc_type === 'note' || doc.name.toLowerCase().includes('note') || doc.tags?.includes('note') || doc.doc_type === 'whatsapp';
   const ext = doc.name.split('.').pop().toUpperCase();
   const fileUrl = `/api/documents/${encodeURIComponent(doc.name)}/file`;
 
@@ -444,7 +530,7 @@ const FileCard = ({
     <div
       draggable={true}
       onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', JSON.stringify({ filename: doc.name, currentFolder: doc.folder, orgId: selectedOrg.id }));
+        e.dataTransfer.setData('text/plain', JSON.stringify({ filename: doc.name, currentFolder: doc.folder, orgId: doc.org_id || selectedOrg?.id }));
         e.dataTransfer.effectAllowed = 'move';
         onDragStart?.(doc);
       }}
@@ -488,7 +574,7 @@ const FileCard = ({
 
       {/* File thumbnail / icon */}
       <div className={`relative w-14 h-16 rounded-xl overflow-hidden flex items-end justify-center shadow-sm ${
-        isWhatsApp
+        isNote
           ? 'bg-emerald-50 border border-emerald-200'
           : isImg
           ? 'bg-slate-200'
@@ -508,12 +594,12 @@ const FileCard = ({
 
         {/* Fallback icon / overlay for non-image */}
         <div className={`${isImg ? 'hidden' : 'flex'} absolute inset-0 flex-col items-center justify-center gap-1 pointer-events-none`}>
-          {isWhatsApp ? (
+          {isNote ? (
             <div className="flex flex-col items-center justify-center gap-1">
               <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-xs">
-                <MessageSquare className="w-3.5 h-3.5 text-white" />
+                <FileText className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-[7.5px] font-extrabold text-emerald-700 tracking-wider">WHATSAPP</span>
+              <span className="text-[7.5px] font-extrabold text-emerald-700 tracking-wider">NOTE</span>
             </div>
           ) : isPdf ? (
             <svg viewBox="0 0 32 40" className="w-8 h-10">
@@ -571,14 +657,18 @@ const FileCard = ({
         <p className={`text-[11px] font-medium leading-tight line-clamp-2 ${isSelected ? 'text-indigo-900 font-bold' : isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
           {doc.name.length > 20 ? doc.name.substring(0, 18) + '…' : doc.name}
         </p>
-        {doc.folder ? (
+        {selectedOrg?.is_all ? (
+          <p className="text-[9px] font-semibold truncate mt-0.5" style={{ color: doc.org_color || '#6366f1' }}>
+            🏢 {doc.org_name || (isTr ? 'Genel' : 'General')}{doc.folder ? ` / 📁 ${doc.folder}` : ''}
+          </p>
+        ) : doc.folder ? (
           <p className="text-[9px] text-indigo-600 font-semibold truncate mt-0.5">📁 {doc.folder}</p>
         ) : selectedOrg?.id === '__unassigned__' && doc.org_name && doc.org_id !== '__unassigned__' ? (
           <p className="text-[9px] font-semibold truncate mt-0.5" style={{ color: doc.org_color || '#6366f1' }}>
             🏢 {doc.org_name}
           </p>
-        ) : isWhatsApp ? (
-          <p className="text-[9px] text-emerald-600 font-semibold truncate mt-0.5">💬 WhatsApp</p>
+        ) : isNote ? (
+          <p className="text-[9px] text-emerald-600 font-semibold truncate mt-0.5">📄 Note / Memo</p>
         ) : null}
       </div>
     </div>
@@ -591,7 +681,7 @@ const ExplorerGrid = ({
   selectedFolderFilter, setSelectedFolderFilter,
   draggedDoc, onDragStart, onDragEnd,
   dragOverFolder, setDragOverFolder, onDropDocOnFolder,
-  onGoToInspector, setMoveFolderModal, setTargetFolderName, setCustomFolderName,
+  setMoveFolderModal, setTargetFolderName, setCustomFolderName,
   setAssignModal, setAssignTargetOrg, setAssignFolder, setAssignTags,
   selectedDocNames, onToggleSelectDoc, onDeleteDoc,
   onDeleteFolder,
@@ -603,7 +693,7 @@ const ExplorerGrid = ({
   const isSelectionMode = selectedDocNames.length > 0;
 
   const handlePreview = (doc) => {
-    setPreviewDoc(previewDoc?.name === doc.name ? null : doc);
+    setPreviewDoc(doc);
   };
 
   const handleMoveFolder = (doc) => {
@@ -733,7 +823,6 @@ const ExplorerGrid = ({
                 onSelect={handlePreview}
                 onToggleSelect={onToggleSelectDoc}
                 onPreview={handlePreview}
-                onInspect={(name) => onGoToInspector?.(name)}
                 onMoveFolder={handleMoveFolder}
                 onAssign={handleAssign}
                 onDelete={onDeleteDoc}
@@ -751,7 +840,7 @@ const ExplorerGrid = ({
 // ─────────────────────────────────────────────────────────────────
 // Main Organizations Component
 // ─────────────────────────────────────────────────────────────────
-const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClearInitialOrgId }) => {
+const Organizations = ({ initialDocName, initialOrgId, openNoteOnMount, onClearInitialOrgId, onClearInitialDocName, activeView }) => {
   const { language, t } = useLanguage();
   const isTr = language === 'tr';
   const [organizations, setOrganizations] = useState([]);
@@ -823,30 +912,37 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
     }
   };
 
-  // Keyboard navigation shortcuts (Alt+Left/Right, Cmd+[ / Cmd+])
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable) {
-        return;
-      }
-      if ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '[')) {
-        e.preventDefault();
-        handleGoBack();
-      } else if ((e.altKey && e.key === 'ArrowRight') || ((e.metaKey || e.ctrlKey) && e.key === ']')) {
-        e.preventDefault();
-        handleGoForward();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canGoBack, canGoForward, navState]);
-
   useEffect(() => {
     if (initialOrgId) {
       setSelectedOrgId(initialOrgId);
       onClearInitialOrgId?.();
     }
   }, [initialOrgId]);
+
+  useEffect(() => {
+    if (!initialDocName) return;
+    const targetName = typeof initialDocName === 'object' ? initialDocName.docName : initialDocName;
+    if (!targetName) return;
+
+    fetch('/api/documents')
+      .then(res => res.ok ? res.json() : [])
+      .then(allDocs => {
+        const found = allDocs.find(d =>
+          d.name === targetName ||
+          d.name.toLowerCase() === targetName.toLowerCase() ||
+          d.name.toLowerCase().startsWith(targetName.toLowerCase().replace(/\.[^/.]+$/, ''))
+        );
+        if (found) {
+          const targetOrgId = found.org_id || '__unassigned__';
+          setSelectedOrgId(targetOrgId);
+          if (found.folder) setSelectedFolderFilter(found.folder);
+          setPreviewDoc(found);
+          fetchOrgDocs(targetOrgId);
+        }
+        onClearInitialDocName?.();
+      })
+      .catch(console.error);
+  }, [initialDocName]);
 
   // Org CRUD
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -945,6 +1041,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         setDocToDelete(null);
         await fetchOrganizations();
         if (selectedOrgId) await fetchOrgDocs(selectedOrgId);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed to delete doc:', err);
@@ -968,6 +1065,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         setBatchDeleteConfirm(false);
         await fetchOrganizations();
         if (selectedOrgId) await fetchOrgDocs(selectedOrgId);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed batch delete:', err);
@@ -996,6 +1094,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         setSelectedDocNames([]);
         await fetchOrganizations();
         if (selectedOrgId) await fetchOrgDocs(selectedOrgId);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed batch move folder:', err);
@@ -1025,6 +1124,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         await fetchOrganizations();
         if (selectedOrgId) await fetchOrgDocs(selectedOrgId);
         await fetchOrgDocs(batchTargetOrgId);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed batch move org:', err);
@@ -1083,6 +1183,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       });
       await fetchOrganizations();
       await fetchOrgDocs(selectedOrgId);
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
     } catch (err) {
       console.error('Failed to move doc on drop:', err);
     }
@@ -1116,6 +1217,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       await fetchOrganizations();
       await fetchOrgDocs(selectedOrgId);
       await fetchOrgDocs(targetOrgId);
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
     } catch (err) {
       console.error('Failed to assign doc on drop:', err);
     }
@@ -1124,7 +1226,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
   const openNoteModal = () => {
     setNoteTitle('');
     setNoteContent('');
-    setNoteOrgId(selectedOrgId && selectedOrgId !== '__unassigned__' ? selectedOrgId : (organizations.find(o => !o.is_system)?.id || ''));
+    setNoteOrgId(selectedOrgId && selectedOrgId !== '__unassigned__' && selectedOrgId !== '__all__' ? selectedOrgId : (organizations.find(o => !o.is_system)?.id || ''));
     setNoteFolder(selectedFolderFilter !== 'all' && selectedFolderFilter !== '__unfolded__' ? selectedFolderFilter : '');
     setNoteFormatWithAi(true);
     setShowNoteModal(true);
@@ -1143,7 +1245,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           org_id: noteOrgId || undefined,
           folder: noteFolder.trim() || undefined,
           format_with_ai: noteFormatWithAi,
-          doc_type: 'whatsapp',
+          doc_type: 'note',
         }),
       });
       if (res.ok) {
@@ -1156,12 +1258,13 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
           setSelectedOrgId(noteOrgId);
           await fetchOrgDocs(noteOrgId);
         }
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
         setPreviewDoc({
           name: data.filename,
           chunk_count: data.chunk_count,
           char_count: data.char_count,
           folder: data.folder,
-          doc_type: 'whatsapp',
+          doc_type: 'note',
         });
       }
     } catch (err) {
@@ -1179,10 +1282,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       if (res.ok) {
         const data = await res.json();
         setOrganizations(data);
-        // Auto-select first non-system org
+        // Default to All Documents if no selection
         if (!selectedOrgId) {
-          const first = data.find(o => !o.is_system);
-          if (first) setSelectedOrgId(first.id);
+          setSelectedOrgId('__all__');
         }
       }
     } catch (err) {
@@ -1192,21 +1294,14 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
     }
   };
 
-  useEffect(() => {
-    fetchOrganizations();
-    const handleUpdate = () => {
-      fetchOrganizations();
-      if (selectedOrgId) fetchOrgDocs(selectedOrgId);
-    };
-    window.addEventListener('mainchunk_docs_updated', handleUpdate);
-    return () => window.removeEventListener('mainchunk_docs_updated', handleUpdate);
-  }, [selectedOrgId]);
-
   const fetchOrgDocs = async (orgId) => {
     if (!orgId) return;
     setLoadingDocs(orgId);
     try {
-      const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/documents`);
+      const url = orgId === '__all__'
+        ? '/api/documents'
+        : `/api/organizations/${encodeURIComponent(orgId)}/documents`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setOrgDocs(prev => ({ ...prev, [orgId]: data }));
@@ -1218,22 +1313,44 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
     }
   };
 
+  // Listen to mainchunk_docs_updated event and window focus
+  useEffect(() => {
+    fetchOrganizations();
+    const handleUpdate = () => {
+      fetchOrganizations();
+      if (selectedOrgId) fetchOrgDocs(selectedOrgId);
+      if (selectedOrgId !== '__all__') fetchOrgDocs('__all__');
+    };
+    window.addEventListener('mainchunk_docs_updated', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+    return () => {
+      window.removeEventListener('mainchunk_docs_updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+    };
+  }, [selectedOrgId]);
+
+  // When switching views to 'organizations', always refresh organizations and docs
+  useEffect(() => {
+    if (activeView === 'organizations') {
+      fetchOrganizations();
+      if (selectedOrgId) fetchOrgDocs(selectedOrgId);
+    }
+  }, [activeView, selectedOrgId]);
+
   // Load docs whenever org selection changes
   useEffect(() => {
     if (selectedOrgId) {
-      if (!isNavigatingRef.current) {
-        setSelectedFolderFilter('all');
-      }
-      setDocSearch('');
-      setPreviewDoc(null);
-      if (!orgDocs[selectedOrgId]) {
-        fetchOrgDocs(selectedOrgId);
-      }
+      fetchOrgDocs(selectedOrgId);
     }
   }, [selectedOrgId]);
 
   const selectOrg = (orgId) => {
     setSelectedOrgId(orgId);
+    if (!isNavigatingRef.current) {
+      setSelectedFolderFilter('all');
+    }
+    setDocSearch('');
+    setPreviewDoc(null);
   };
 
   const handleCreateOrg = async () => {
@@ -1258,6 +1375,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         setNewOrgTags(''); setNewOrgFolders('');
         await fetchOrganizations();
         setSelectedOrgId(newOrg.id);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed to create org:', err);
@@ -1272,8 +1390,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       if (res.ok) {
         setDeleteConfirm(null);
         const nextOrg = organizations.find(o => o.id !== orgId && !o.is_system);
-        setSelectedOrgId(nextOrg?.id || null);
+        setSelectedOrgId(nextOrg?.id || '__all__');
         await fetchOrganizations();
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed to delete org:', err);
@@ -1289,6 +1408,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       });
       setEditingOrg(null);
       await fetchOrganizations();
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
     } catch (err) {
       console.error('Failed to update org:', err);
     }
@@ -1311,6 +1431,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         setAssignModal(null); setAssignTargetOrg(''); setAssignFolder(''); setAssignTags('');
         await fetchOrganizations();
         if (selectedOrgId) await fetchOrgDocs(selectedOrgId);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed to assign doc:', err);
@@ -1332,6 +1453,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         setNewFolderName('');
         await fetchOrganizations();
         await fetchOrgDocs(orgId);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed to create folder:', err);
@@ -1367,6 +1489,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       }
       await fetchOrganizations();
       await fetchOrgDocs(selectedOrgId);
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
     } catch (err) {
       console.error('Failed to delete folder:', err);
     }
@@ -1386,6 +1509,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         setMoveFolderModal(null); setTargetFolderName(''); setCustomFolderName('');
         await fetchOrganizations();
         if (selectedOrgId) await fetchOrgDocs(selectedOrgId);
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed to move doc folder:', err);
@@ -1395,7 +1519,23 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
   };
 
   // Derived data for current org
-  const selectedOrg = organizations.find(o => o.id === selectedOrgId);
+  const totalDocsCount = React.useMemo(() => {
+    return organizations.reduce((acc, o) => acc + (o.document_count || 0), 0);
+  }, [organizations]);
+
+  const allDocsOrg = React.useMemo(() => ({
+    id: '__all__',
+    name: isTr ? 'Tüm Dokümanlar' : 'All Documents',
+    description: isTr ? 'Tüm portföylerdeki bütün dosyalar' : 'All files across all portfolios and folders',
+    color: '#6366f1',
+    is_all: true,
+    document_count: totalDocsCount,
+    folders: Array.from(new Set(organizations.flatMap(o => o.folders || []))).sort(),
+  }), [isTr, totalDocsCount, organizations]);
+
+  const selectedOrg = selectedOrgId === '__all__'
+    ? allDocsOrg
+    : organizations.find(o => o.id === selectedOrgId);
   const currentDocs = orgDocs[selectedOrgId] || [];
 
   const allFolders = React.useMemo(() => {
@@ -1423,6 +1563,68 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
     }
     return docs;
   }, [currentDocs, selectedFolderFilter, docSearch]);
+
+  const effectiveDocList = React.useMemo(() => {
+    if (!previewDoc) return filteredDocs;
+    const idx = filteredDocs.findIndex(d => d.name === previewDoc.name);
+    if (idx !== -1) return filteredDocs;
+    const currIdx = currentDocs.findIndex(d => d.name === previewDoc.name);
+    if (currIdx !== -1) return currentDocs;
+    return [previewDoc];
+  }, [filteredDocs, currentDocs, previewDoc]);
+
+  const docIndex = previewDoc ? effectiveDocList.findIndex(d => d.name === previewDoc.name) : -1;
+  const hasPrevDoc = docIndex > 0;
+  const hasNextDoc = docIndex >= 0 && docIndex < effectiveDocList.length - 1;
+
+  const handlePrevDoc = () => {
+    if (hasPrevDoc) {
+      setPreviewDoc(effectiveDocList[docIndex - 1]);
+    }
+  };
+
+  const handleNextDoc = () => {
+    if (hasNextDoc) {
+      setPreviewDoc(effectiveDocList[docIndex + 1]);
+    }
+  };
+
+  // Unified keyboard navigation shortcuts (Left/Right arrows for docs in modal, Alt+Left/Right for history, ESC to close)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable) {
+        return;
+      }
+
+      if (previewDoc) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setPreviewDoc(null);
+          return;
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handlePrevDoc();
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          handleNextDoc();
+          return;
+        }
+      }
+
+      if ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '[')) {
+        e.preventDefault();
+        handleGoBack();
+      } else if ((e.altKey && e.key === 'ArrowRight') || ((e.metaKey || e.ctrlKey) && e.key === ']')) {
+        e.preventDefault();
+        handleGoForward();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewDoc, hasPrevDoc, hasNextDoc, docIndex, effectiveDocList, canGoBack, canGoForward, navState]);
 
   const userOrgs = organizations.filter(o => !o.is_system && o.name.toLowerCase().includes(search.toLowerCase()));
   const unassignedOrg = organizations.find(o => o.is_system);
@@ -1472,126 +1674,161 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             <div className="flex items-center justify-center h-24">
               <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
             </div>
-          ) : userOrgs.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-4 py-8 text-slate-400">
-              <Building2 className="w-8 h-8 text-slate-300" />
-              <p className="text-xs text-center">{isTr ? 'Henüz kurum yok' : 'No portfolios yet'}</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="text-xs text-indigo-600 font-semibold hover:underline"
-              >
-                + {isTr ? 'Kurum oluştur' : 'Create Portfolio'}
-              </button>
-            </div>
           ) : (
-            <div className="px-2 space-y-0.5">
-              {userOrgs.map(org => {
-                const isSelected = selectedOrgId === org.id;
-                const isOrgDropTarget = dragOverOrgId === org.id;
-                return (
-                  <div key={org.id} className="group relative">
-                    <button
-                      onClick={() => selectOrg(org.id)}
-                      onDragOver={(e) => {
-                        if (draggedDoc && selectedOrgId !== org.id) {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = 'move';
-                          if (dragOverOrgId !== org.id) setDragOverOrgId(org.id);
-                        }
-                      }}
-                      onDragLeave={() => {
-                        if (dragOverOrgId === org.id) setDragOverOrgId(null);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDragOverOrgId(null);
-                        handleDropDocOnOrg(org.id);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left transition-all ${
-                        isOrgDropTarget
-                          ? 'bg-emerald-100 ring-2 ring-emerald-500 scale-[1.02] shadow-sm'
-                          : isSelected
-                          ? 'bg-indigo-50 border border-indigo-200/80 shadow-xs'
-                          : 'hover:bg-slate-50 border border-transparent'
-                      }`}
-                      title={isOrgDropTarget ? (isTr ? `"${draggedDoc?.name}" dosyasını buraya bırakın` : `Drop "${draggedDoc?.name}" here`) : org.name}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
-                        style={{ backgroundColor: isOrgDropTarget ? '#10b98130' : `${org.color}18` }}
-                      >
-                        <Building2 className="w-4 h-4" style={{ color: isOrgDropTarget ? '#059669' : org.color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-bold truncate ${isOrgDropTarget ? 'text-emerald-800' : isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>
-                          {isOrgDropTarget ? (isTr ? 'Buraya Taşı' : 'Move Here') : org.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono">{org.document_count} {isTr ? 'dok.' : 'docs'}</p>
-                      </div>
-                      {isSelected && !isOrgDropTarget && <ChevronRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
-                    </button>
-
-                    {/* Hover actions */}
-                    {!isSelected && !isOrgDropTarget && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingOrg(org.id); setEditName(org.name); setEditDesc(org.description); }}
-                          className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(org.id); }}
-                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Unassigned system org at bottom */}
-          {unassignedOrg && (
-            <div className="px-2 mt-2 pt-2 border-t border-slate-100">
+            <div className="px-2 space-y-1">
+              {/* All Documents option */}
               <button
-                onClick={() => selectOrg(unassignedOrg.id)}
-                onDragOver={(e) => {
-                  if (draggedDoc && selectedOrgId !== unassignedOrg.id) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    if (dragOverOrgId !== unassignedOrg.id) setDragOverOrgId(unassignedOrg.id);
-                  }
-                }}
-                onDragLeave={() => {
-                  if (dragOverOrgId === unassignedOrg.id) setDragOverOrgId(null);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOverOrgId(null);
-                  handleDropDocOnOrg(unassignedOrg.id);
-                }}
+                onClick={() => selectOrg('__all__')}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left transition-all ${
-                  dragOverOrgId === unassignedOrg.id
-                    ? 'bg-emerald-100 ring-2 ring-emerald-500 scale-[1.02] shadow-sm'
-                    : selectedOrgId === unassignedOrg.id
-                    ? 'bg-slate-100 border border-slate-200'
-                    : 'hover:bg-slate-50 border border-transparent'
+                  selectedOrgId === '__all__'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'hover:bg-slate-100 text-slate-700'
                 }`}
+                title={isTr ? 'Tüm portföylerdeki bütün dokümanları göster' : 'Show all documents across all portfolios'}
               >
-                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                  <Folder className="w-4 h-4 text-slate-400" />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  selectedOrgId === '__all__' ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'
+                }`}>
+                  <Layers className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-600 truncate">
-                    {dragOverOrgId === unassignedOrg.id ? (isTr ? 'Klasörsüz Havuza Taşı' : 'Move to Unassigned') : (unassignedOrg.id === '__unassigned__' ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : unassignedOrg.name)}
+                  <p className={`text-xs font-bold truncate ${selectedOrgId === '__all__' ? 'text-white' : 'text-slate-800'}`}>
+                    {isTr ? 'Tüm Dokümanlar' : 'All Documents'}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">{unassignedOrg.document_count} {isTr ? 'doküman' : 'docs'}</p>
+                  <p className={`text-[10px] font-mono ${selectedOrgId === '__all__' ? 'text-indigo-100' : 'text-slate-400'}`}>
+                    {totalDocsCount} {isTr ? 'doküman' : 'docs'}
+                  </p>
                 </div>
+                {selectedOrgId === '__all__' && (
+                  <ChevronRight className="w-3.5 h-3.5 text-white shrink-0" />
+                )}
               </button>
+
+              <div className="my-1.5 border-t border-slate-100" />
+
+              {/* User Orgs list or empty state */}
+              {userOrgs.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 px-4 py-8 text-slate-400">
+                  <Building2 className="w-8 h-8 text-slate-300" />
+                  <p className="text-xs text-center">{isTr ? 'Henüz kurum yok' : 'No portfolios yet'}</p>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="text-xs text-indigo-600 font-semibold hover:underline"
+                  >
+                    + {isTr ? 'Kurum oluştur' : 'Create Portfolio'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {userOrgs.map(org => {
+                    const isSelected = selectedOrgId === org.id;
+                    const isOrgDropTarget = dragOverOrgId === org.id;
+                    return (
+                      <div key={org.id} className="group relative">
+                        <button
+                          onClick={() => selectOrg(org.id)}
+                          onDragOver={(e) => {
+                            if (draggedDoc && selectedOrgId !== org.id) {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              if (dragOverOrgId !== org.id) setDragOverOrgId(org.id);
+                            }
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverOrgId === org.id) setDragOverOrgId(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverOrgId(null);
+                            handleDropDocOnOrg(org.id);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left transition-all ${
+                            isOrgDropTarget
+                              ? 'bg-emerald-100 ring-2 ring-emerald-500 scale-[1.02] shadow-sm'
+                              : isSelected
+                              ? 'bg-indigo-50 border border-indigo-200/80 shadow-xs'
+                              : 'hover:bg-slate-50 border border-transparent'
+                          }`}
+                          title={isOrgDropTarget ? (isTr ? `"${draggedDoc?.name}" dosyasını buraya bırakın` : `Drop "${draggedDoc?.name}" here`) : org.name}
+                        >
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                            style={{ backgroundColor: isOrgDropTarget ? '#10b98130' : `${org.color}18` }}
+                          >
+                            <Building2 className="w-4 h-4" style={{ color: isOrgDropTarget ? '#059669' : org.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-bold truncate ${isOrgDropTarget ? 'text-emerald-800' : isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>
+                              {isOrgDropTarget ? (isTr ? 'Buraya Taşı' : 'Move Here') : org.name}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-mono">{org.document_count} {isTr ? 'dok.' : 'docs'}</p>
+                          </div>
+                          {isSelected && !isOrgDropTarget && <ChevronRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
+                        </button>
+
+                        {/* Hover actions */}
+                        {!isSelected && !isOrgDropTarget && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditingOrg(org.id); setEditName(org.name); setEditDesc(org.description); }}
+                              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteConfirm(org.id); }}
+                              className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Unassigned system org at bottom */}
+              {unassignedOrg && (
+                <div className="mt-2 pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => selectOrg(unassignedOrg.id)}
+                    onDragOver={(e) => {
+                      if (draggedDoc && selectedOrgId !== unassignedOrg.id) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (dragOverOrgId !== unassignedOrg.id) setDragOverOrgId(unassignedOrg.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverOrgId === unassignedOrg.id) setDragOverOrgId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOverOrgId(null);
+                      handleDropDocOnOrg(unassignedOrg.id);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left transition-all ${
+                      dragOverOrgId === unassignedOrg.id
+                        ? 'bg-emerald-100 ring-2 ring-emerald-500 scale-[1.02] shadow-sm'
+                        : selectedOrgId === unassignedOrg.id
+                        ? 'bg-slate-100 border border-slate-200'
+                        : 'hover:bg-slate-50 border border-transparent'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                      <Folder className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-600 truncate">
+                        {dragOverOrgId === unassignedOrg.id ? (isTr ? 'Klasörsüz Havuza Taşı' : 'Move to Unassigned') : (unassignedOrg.id === '__unassigned__' ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : unassignedOrg.name)}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-mono">{unassignedOrg.document_count} {isTr ? 'doküman' : 'docs'}</p>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1601,7 +1838,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       {/* ══════════════════════════════════════════════
           CENTER PANEL — Document List
       ══════════════════════════════════════════════ */}
-      <div className={`relative flex flex-col min-w-0 overflow-hidden transition-all duration-200 ${previewDoc ? 'flex-[2]' : 'flex-1'}`}>
+      <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
         {!selectedOrg ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
             <Building2 className="w-12 h-12 text-slate-300 mb-3" />
@@ -1625,7 +1862,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                           ? 'text-slate-700 hover:text-indigo-600 hover:bg-white shadow-2xs cursor-pointer active:scale-95'
                           : 'text-slate-300 cursor-not-allowed opacity-40'
                       }`}
-                      title={canGoBack ? (isTr ? 'Geri git (Alt + Sol Ok)' : 'Go back (Alt + Left Arrow)') : (isTr ? 'Geri gidilemez' : 'Cannot go back')}
+                      title={canGoBack ? (isTr ? 'Geri git (Alt + Sol Ok)' : 'Go back (Alt + Left Arrow)') : (isTr ? 'Geri gidilemez' : 'Cannot go forward')}
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
@@ -1654,7 +1891,11 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                       }`}
                       title={isTr ? `${selectedOrg.name} tüm dosyaları` : `All files in ${selectedOrg.name}`}
                     >
-                      <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: selectedOrg.color }} />
+                      {selectedOrg.is_all ? (
+                        <Layers className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
+                      ) : (
+                        <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: selectedOrg.color }} />
+                      )}
                       <span className="truncate max-w-[140px] sm:max-w-[220px]">
                         {selectedOrg.is_system ? (isTr ? 'Genel / Klasörsüzler' : 'General / Unassigned') : selectedOrg.name}
                       </span>
@@ -1689,7 +1930,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                     className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                     style={{ backgroundColor: `${selectedOrg.color}15` }}
                   >
-                    {selectedOrg.is_system
+                    {selectedOrg.is_all
+                      ? <Layers className="w-5 h-5 text-indigo-600" />
+                      : selectedOrg.is_system
                       ? <HelpCircle className="w-5 h-5 text-slate-400" />
                       : <Building2 className="w-5 h-5" style={{ color: selectedOrg.color }} />
                     }
@@ -1733,7 +1976,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                     {selectedOrg.document_count} {isTr ? 'dok.' : 'docs'}
                   </span>
-                  {!selectedOrg.is_system && editingOrg !== selectedOrg.id && (
+                  {!selectedOrg.is_system && !selectedOrg.is_all && editingOrg !== selectedOrg.id && (
                     <>
                       <button
                         onClick={() => { setEditingOrg(selectedOrg.id); setEditName(selectedOrg.name); setEditDesc(selectedOrg.description); }}
@@ -1810,7 +2053,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                           {count}
                         </span>
                       </button>
-                      {!selectedOrg.is_system && (
+                      {!selectedOrg.is_system && !selectedOrg.is_all && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1859,7 +2102,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 )}
 
                 {/* Add folder button */}
-                {!selectedOrg.is_system && (
+                {!selectedOrg.is_system && !selectedOrg.is_all && (
                   showAddFolder ? (
                     <form
                       onSubmit={(e) => { e.preventDefault(); handleCreateFolder(selectedOrg.id, newFolderName); }}
@@ -1975,7 +2218,6 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                   dragOverFolder={dragOverFolder}
                   setDragOverFolder={setDragOverFolder}
                   onDropDocOnFolder={handleDropDocOnFolder}
-                  onGoToInspector={onGoToInspector}
                   setMoveFolderModal={setMoveFolderModal}
                   setTargetFolderName={setTargetFolderName}
                   setCustomFolderName={setCustomFolderName}
@@ -2064,15 +2306,23 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
       </div>
 
       {/* ══════════════════════════════════════════════
-          RIGHT PANEL — Inline Preview
+          FULLSCREEN DOCUMENT VIEWER MODAL
       ══════════════════════════════════════════════ */}
       {previewDoc && (
-        <div className="flex-[2] min-w-0 max-w-[55%] border-l border-slate-200 overflow-hidden">
-          <InlinePreview
-            doc={previewDoc}
-            onClose={() => setPreviewDoc(null)}
-            onDelete={handleDeleteDoc}
-          />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/80 backdrop-blur-md animate-[fadeIn_0.15s_ease-out]">
+          <div className="relative w-full h-full max-w-7xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-700/30">
+            <InlinePreview
+              doc={previewDoc}
+              onClose={() => setPreviewDoc(null)}
+              onDelete={handleDeleteDoc}
+              onPrevDoc={handlePrevDoc}
+              onNextDoc={handleNextDoc}
+              hasPrevDoc={hasPrevDoc}
+              hasNextDoc={hasNextDoc}
+              currentIndex={docIndex}
+              totalDocs={effectiveDocList.length}
+            />
+          </div>
         </div>
       )}
 
@@ -2363,7 +2613,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
         </div>
       )}
 
-      {/* Quick Note / WhatsApp Modal */}
+      {/* Quick Note Modal */}
       {showNoteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowNoteModal(false)} />
@@ -2371,9 +2621,9 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                  <FileText className="w-4 h-4 text-emerald-600" />
                 </div>
-                {isTr ? 'WhatsApp / Portföy Notu Ekle' : 'Add WhatsApp / Portfolio Note'}
+                Add Quick Note / Memo
               </h2>
               <button
                 onClick={() => setShowNoteModal(false)}
@@ -2383,21 +2633,19 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               </button>
             </div>
             <p className="text-xs text-slate-500 mb-5">
-              {isTr
-                ? 'WhatsApp sohbet geçmişini, müşteri mesajlarını veya serbest notları yapıştırın. Yapay zeka bu bilgileri RAG sistemi için otomatik indeksler.'
-                : 'Paste WhatsApp chat history, client messages, or notes. AI will automatically index this information for the RAG system.'}
+              Paste meeting notes, customer transcripts, or memos. AI will automatically vectorize and index this information for search and retrieval.
             </p>
 
             <div className="space-y-4">
               {/* Note title */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  {isTr ? 'Başlık / Portföy Adı *' : 'Title / Note Name *'}
+                  Title / Note Name *
                 </label>
                 <input
                   value={noteTitle}
                   onChange={e => setNoteTitle(e.target.value)}
-                  placeholder={isTr ? 'örn. Nuran Hanım - Kadıköy 3+1 WhatsApp Sohbeti' : 'e.g. Client Conversation - Kadıköy Property Note'}
+                  placeholder="e.g. Client Call - Paris Property Discussion"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                   autoFocus
                 />
@@ -2406,7 +2654,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               {/* Target Organization */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  {isTr ? 'Kurum / Organizasyon' : 'Portfolio / Organization'}
+                  Portfolio / Organization
                 </label>
                 <div className="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto custom-scrollbar">
                   {organizations.filter(o => !o.is_system).map(org => (
@@ -2431,7 +2679,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               {/* Target Folder */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  {isTr ? 'Klasör / Portföy (Opsiyonel)' : 'Folder / Sub-portfolio (Optional)'}
+                  Folder / Sub-portfolio (Optional)
                 </label>
                 {organizations.find(o => o.id === noteOrgId)?.folders?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -2454,7 +2702,7 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
                 <input
                   value={noteFolder}
                   onChange={e => setNoteFolder(e.target.value)}
-                  placeholder={isTr ? 'örn. Portföy A, Görüşmeler, 2026' : 'e.g. Portfolio A, Meetings, 2026'}
+                  placeholder="e.g. Portfolio A, Meetings, 2026"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -2462,13 +2710,13 @@ const Organizations = ({ onGoToInspector, initialOrgId, openNoteOnMount, onClear
               {/* Content textarea */}
               <div>
                 <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                  {isTr ? 'WhatsApp Mesajları / Not Metni *' : 'WhatsApp Messages / Note Text *'}
+                  Note / Memo Text *
                 </label>
                 <textarea
                   value={noteContent}
                   onChange={e => setNoteContent(e.target.value)}
                   rows={7}
-                  placeholder={isTr ? "WhatsApp'tan kopyaladığınız mesajları buraya yapıştırın...\n\nÖrnek:\n[12.04.2026 14:15] Nuran Hanım: Kadıköy'deki daire için kira 35.000 TL olarak belirlendi. 2 kira depozito isteniyor.\n[12.04.2026 14:18] Ben: Randevu ne zaman uygun olur?\n[12.04.2026 14:20] Nuran Hanım: Yarın saat 15:00'te mülk sahibiyle görebiliriz." : "Paste messages or notes here...\n\nExample:\n[12.04.2026 14:15] John: Rent is set to $2,500/month. 2 months deposit requested.\n[12.04.2026 14:18] Me: When can we arrange a viewing?\n[12.04.2026 14:20] John: Tomorrow at 3:00 PM works best."}
+                  placeholder={"Paste messages, transcripts, or notes here...\n\nExample:\n[12.04.2026 14:15] John: Rent is set to $2,500/month. 2 months deposit requested.\n[12.04.2026 14:18] Me: When can we arrange a viewing?\n[12.04.2026 14:20] John: Tomorrow at 3:00 PM works best."}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 font-sans leading-relaxed custom-scrollbar"
                 />
               </div>

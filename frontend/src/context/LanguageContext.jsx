@@ -4,7 +4,7 @@ const translations = {
   en: {
     // Brand & General
     appName: 'MainChunk',
-    appSubtitle: 'Document Butler',
+    appSubtitle: 'Document & Info Assistant',
     language: 'Language',
     english: 'English',
     turkish: 'Türkçe',
@@ -50,9 +50,9 @@ const translations = {
     menu: 'Menu',
 
     // Dashboard
-    dashTitle: 'Document Butler Dashboard',
-    dashSubtitle: 'Real-time AI knowledge repository and organization analytics',
-    dashSearchPlaceholder: 'Ask AI anything about your real estate, contracts or documents...',
+    dashTitle: 'Document Warehouse & AI Assistant',
+    dashSubtitle: 'An AI assistant for your document warehouse and real-time knowledge repository',
+    dashSearchPlaceholder: 'Ask your AI Document Assistant anything about your real estate, contracts or documents...',
     dashAskAi: 'Ask AI',
     dashNewNote: 'Quick Note / Record',
     dashUploadDoc: 'Upload Documents',
@@ -67,34 +67,34 @@ const translations = {
     dashSubFoldersDesc: 'Nested portfolio groups',
 
     // Real Estate Chart
-    chartTitle: 'Real Estate & Portfolio Breakdown',
-    chartSubtitle: 'Automated AI classification across all documents and notes',
+    chartTitle: 'Property & Portfolio Asset Breakdown',
+    chartSubtitle: 'Automated AI classification by real estate property type across all portfolios',
     chartTotalRecords: 'Total Records',
-    chartAllCategories: 'All Categories',
-    chartCategoryHint: 'Hover or click on categories to highlight distribution',
-    chartDocDistribution: 'Document Distribution',
+    chartAllCategories: 'All Property Types',
+    chartCategoryHint: 'Hover or click on property types to highlight distribution',
+    chartDocDistribution: 'Property Distribution',
 
-    catArsa: 'Land & Field Portfolio',
-    catArsaDesc: 'Title deed records, parcel lots, zoning status and land plots',
-    catKatKarsiligi: 'Floor Equivalent & Construction',
-    catKatKarsiligiDesc: 'Contractor agreements, building shares and project terms',
-    catKiralikSatilik: 'For Sale & Rent Portfolio',
-    catKiralikSatilikDesc: 'Apartments, shops, residential listings and commercial units',
-    catMusteriNotlari: 'Customer Notes & WhatsApp',
-    catMusteriNotlariDesc: 'Mobile messages, bargaining notes, meeting logs and inquiries',
-    catSertifikalar: 'Certificates & Credentials',
-    catSertifikalarDesc: 'Professional certificates, web & tech skills, accreditations',
-    catTicariSozlesme: 'Commercial Contracts & Drafts',
-    catTicariSozlesmeDesc: 'Business agreements, trade procedures and drafts',
-    catDiger: 'General / Other Documents',
-    catDigerDesc: 'Unclassified files, photos and misc attachments',
+    catApartments: 'Apartments & Residences',
+    catApartmentsDesc: 'Apartment flats, luxury residences, penthouses and duplex units',
+    catLand: 'Land & Building Plots',
+    catLandDesc: 'Zoned land, parcel lots, agricultural fields and development plots',
+    catVillas: 'Villas & Mansions',
+    catVillasDesc: 'Private houses, detached villas, mansions and estate properties',
+    catCommercial: 'Commercial & Retail',
+    catCommercialDesc: 'Office spaces, retail stores, commercial units and plazas',
+    catDevelopment: 'Development & Projects',
+    catDevelopmentDesc: 'Contractor projects, renovation works and construction agreements',
+    catContracts: 'Legal Deeds & Contracts',
+    catContractsDesc: 'Official title deeds, mandates, brokerage agreements and contracts',
+    catGeneral: 'General / Other Assets',
+    catGeneralDesc: 'Unclassified portfolio files and general attachments',
 
     // Recent Documents
     recentDocsTitle: 'Recent Documents & Records',
     recentDocsDesc: 'Latest ingested files, transcribed notes and scanned deeds',
     viewAllDocs: 'View All Documents',
     noDocsYet: 'No documents uploaded yet',
-    noDocsYetDesc: 'Upload a file or create a WhatsApp note to get started.',
+    noDocsYetDesc: 'Upload a file or create a quick note to get started.',
 
     // Active Organizations Widget
     activePortfoliosTitle: 'Active Portfolios & Clients',
@@ -107,7 +107,7 @@ const translations = {
 
     // Upload & Ingestion
     tabFileUpload: 'File Upload',
-    tabWhatsAppNote: 'WhatsApp / Quick Note',
+    tabWhatsAppNote: 'Quick Note / Memo',
     tabSmartBatch: 'Smart AI Auto-Organize',
     dropZoneTitle: 'Drag and drop your files here',
     dropZoneSubtitle: 'or click to browse from computer (PDF, PNG, JPG, TXT)',
@@ -123,15 +123,15 @@ const translations = {
     assignedToOrg: 'Assigned to {org}',
     suggestedFolder: 'Folder: {folder}',
 
-    // WhatsApp / Note Editor
-    noteModalTitle: 'Create Quick Note / WhatsApp Record',
+    // Quick Note Editor
+    noteModalTitle: 'Create Quick Note / Memo',
     noteTitleLabel: 'Note Title / Reference',
-    noteTitlePlaceholder: 'e.g. Silivri Land Offer - Client Call Note',
+    noteTitlePlaceholder: 'e.g. Paris Land Offer - Client Call Note',
     noteContentLabel: 'Content / Message Log',
-    noteContentPlaceholder: 'Type or paste WhatsApp message, phone conversation notes, or client offer details...',
+    noteContentPlaceholder: 'Type or paste phone conversation notes, client offer details, or meeting memos...',
     noteOrgLabel: 'Target Portfolio / Client',
     noteFolderLabel: 'Sub-Folder (Optional)',
-    noteFolderPlaceholder: 'e.g. Silivri Portfolio, Inquiries...',
+    noteFolderPlaceholder: 'e.g. Paris Portfolio, Inquiries...',
     noteAiFormatLabel: 'Auto-format and structure with AI',
     saveNoteBtn: 'Save & Vectorize Note',
     savingNote: 'Saving & Indexing...',
@@ -140,8 +140,8 @@ const translations = {
     editNoteSave: 'Save & Re-index',
 
     // AI Chat
-    chatHeaderTitle: 'Butler AI Search & Chat',
-    chatHeaderSubtitle: 'Grounded question answering with exact source citations',
+    chatHeaderTitle: 'AI Document & Info Assistant',
+    chatHeaderSubtitle: 'Grounded question answering across your document warehouse with exact source citations',
     chatPlaceholder: 'Ask a question about your portfolios, parcels, prices or notes...',
     sendBtn: 'Send',
     sourcesUsed: 'Sources & Citations ({count})',
@@ -179,7 +179,7 @@ const translations = {
     docTypeAll: 'All Types',
     docTypePdf: 'PDF Documents',
     docTypeImg: 'Images / OCR Scans',
-    docTypeNote: 'WhatsApp / Notes',
+    docTypeNote: 'Notes & Memos',
     tableDocName: 'Document Name',
     tablePortfolio: 'Portfolio & Folder',
     tableType: 'Type',
@@ -198,8 +198,8 @@ const translations = {
 
     // Tour
     tourTitle: 'MainChunk Interactive Tour',
-    tourStep1Title: 'Document Butler & Repository',
-    tourStep1Desc: 'Upload land deeds, contractor agreements, and client notes. MainChunk processes, transcribes via Vision OCR, and embeds them into vector storage.',
+    tourStep1Title: 'AI Assistant for Your Warehouse',
+    tourStep1Desc: 'Upload land deeds, contractor agreements, and client notes. Your AI assistant processes, transcribes via Vision OCR, and embeds them into your knowledge warehouse.',
     tourStep2Title: 'Portfolio Organization',
     tourStep2Desc: 'Organize files into client portfolios and sub-folders with drag & drop support and automatic AI categorization.',
     tourStep3Title: 'Instant Semantic Search & Chat',
@@ -210,7 +210,7 @@ const translations = {
   tr: {
     // Brand & General
     appName: 'MainChunk',
-    appSubtitle: 'Belge Asistanı',
+    appSubtitle: 'Belge & Bilgi Asistanı',
     language: 'Dil',
     english: 'English',
     turkish: 'Türkçe',
@@ -256,9 +256,9 @@ const translations = {
     menu: 'Menü',
 
     // Dashboard
-    dashTitle: 'Belge Asistanı Kontrol Paneli',
-    dashSubtitle: 'Gerçek zamanlı AI bilgi havuzu ve portföy analitiği',
-    dashSearchPlaceholder: 'Gayrimenkul, sözleşme ve evraklarınız hakkında AI\'ya soru sorun...',
+    dashTitle: 'Belge Deposu & AI Asistanı',
+    dashSubtitle: 'Belge deponuz ve bilgi havuzunuz için gerçek zamanlı yapay zeka asistanı',
+    dashSearchPlaceholder: 'Belge ve bilgi asistanına gayrimenkul, sözleşme veya evraklarınız hakkında sorun...',
     dashAskAi: 'AI\'ya Sor',
     dashNewNote: 'Hızlı Not / Kayıt',
     dashUploadDoc: 'Doküman Yükle',
@@ -346,8 +346,8 @@ const translations = {
     editNoteSave: 'Kaydet ve Yeniden İndeksle',
 
     // AI Chat
-    chatHeaderTitle: 'Asistan AI Arama & Sohbet',
-    chatHeaderSubtitle: 'Doğrudan kaynak doğrulamalı soru-cevap asistanı',
+    chatHeaderTitle: 'AI Belge & Bilgi Asistanı',
+    chatHeaderSubtitle: 'Belge deponuzdan doğrulanmış kaynak alıntılarıyla soru-cevap asistanı',
     chatPlaceholder: 'Portföyleriniz, parseller, fiyatlar veya notlar hakkında soru sorun...',
     sendBtn: 'Gönder',
     sourcesUsed: 'Kullanılan Kaynaklar ({count})',
@@ -404,8 +404,8 @@ const translations = {
 
     // Tour
     tourTitle: 'MainChunk Tanıtım Turu',
-    tourStep1Title: 'Belge Asistanı & Bilgi Deposu',
-    tourStep1Desc: 'Arsa tapuları, inşaat sözleşmeleri ve müşteri notlarını yükleyin. MainChunk işler, Vision OCR ile okur ve vektör deposuna kaydeder.',
+    tourStep1Title: 'Deponuz İçin Yapay Zeka Asistanı',
+    tourStep1Desc: 'Arsa tapuları, inşaat sözleşmeleri ve müşteri notlarınızı yükleyin. AI asistanınız dosyaları işler, Vision OCR ile okur ve bilgi deponuza kaydeder.',
     tourStep2Title: 'Portföy Organizasyonu',
     tourStep2Desc: 'Dosyaları müşteri portföylerine ve alt klasörlere sürükle-bırak kolaylığı ve AI önerileriyle düzenleyin.',
     tourStep3Title: 'Anında Semantik Arama & Sohbet',
@@ -421,18 +421,20 @@ const LanguageContext = createContext({
 });
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguageState] = useState(() => {
-    return localStorage.getItem('mainchunk_language') || 'en';
-  });
+  const [language, setLanguageState] = useState('en');
+
+  useEffect(() => {
+    localStorage.setItem('mainchunk_language', 'en');
+  }, []);
 
   const setLanguage = (lang) => {
-    setLanguageState(lang);
-    localStorage.setItem('mainchunk_language', lang);
+    setLanguageState('en');
+    localStorage.setItem('mainchunk_language', 'en');
   };
 
   const t = (key, params = {}) => {
-    const langDict = translations[language] || translations.en;
-    let str = langDict[key] || translations.en[key] || key;
+    const langDict = translations.en;
+    let str = langDict[key] || key;
     if (params && typeof params === 'object') {
       Object.entries(params).forEach(([pKey, pVal]) => {
         str = str.replace(new RegExp(`\\{${pKey}\\}`, 'g'), String(pVal));

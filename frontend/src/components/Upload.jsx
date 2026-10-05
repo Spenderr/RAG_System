@@ -245,6 +245,9 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
     }
 
     setFiles((prev) => {
+      if (uploadState === 'complete') {
+        return validFiles;
+      }
       const existingNames = new Set(prev.map((p) => p.name));
       const toAdd = validFiles.filter((f) => !existingNames.has(f.name));
       return [...prev, ...toAdd];
@@ -256,6 +259,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
       setCompletedSteps([]);
       setActiveStep(null);
       setErrorMsg('');
+      setOrgDetection(null);
     }
   };
 
@@ -269,6 +273,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
   };
 
   const resetUpload = () => {
+    setFiles([]);
     setUploadState('idle');
     setActiveStep(null);
     setCompletedSteps([]);
@@ -278,6 +283,8 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
     setFileProgressMap({});
     setErrorMsg('');
     setOrgDetection(null);
+    setBatchAnalysis(null);
+    setBatchFileRenames({});
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -422,6 +429,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
 
     setTotalChunksCount(cumulativeChunks);
     setUploadState('complete');
+    window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
 
     // Automatically trigger Batch or Single-File AI Analysis
     if (processedForAssignment.length > 0) {
@@ -501,7 +509,14 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
         setUnassignedQueue([]);
         setBatchAnalysis(null);
         setBatchFileRenames({});
+        setFiles([]);
+        setUploadState('idle');
+        setFileProgressMap({});
+        setCompletedSteps([]);
+        setActiveStep(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         await fetchOrgs();
+        window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       }
     } catch (err) {
       console.error('Failed to commit batch portfolio:', err);
@@ -538,6 +553,12 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
       setCurrentQueueIndex(0);
       setAssignFolder('');
       setBatchAnalysis(null);
+      setFiles([]);
+      setUploadState('idle');
+      setFileProgressMap({});
+      setCompletedSteps([]);
+      setActiveStep(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -576,6 +597,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
           tags: assignTags.split(',').map((t) => t.trim()).filter(Boolean),
         }),
       });
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       advanceOrCloseQueue();
     } catch (err) {
       console.error('Failed to assign org:', err);
@@ -617,6 +639,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
       setInlineOrgName('');
       setInlineOrgDesc('');
       setInlineOrgColor('#6366f1');
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       advanceOrCloseQueue();
     } catch (err) {
       console.error('Failed to create and assign organization:', err);
@@ -633,6 +656,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ org_id: '__unassigned__', tags: [] }),
       });
+      window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
       advanceOrCloseQueue();
     } catch (err) {
       console.error('Failed to skip/unassign:', err);
@@ -644,6 +668,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
     setShowOrgModal(false);
     setUnassignedQueue([]);
     setCurrentQueueIndex(0);
+    window.dispatchEvent(new CustomEvent('mainchunk_docs_updated'));
   };
 
   // ── Chat handlers ───────────────────────────
@@ -1347,11 +1372,7 @@ const Upload = ({ onViewDocument, onGoToInspector, onTraceGrounding, initialChat
               <textarea
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
-                placeholder={
-                  isTr
-                    ? "WhatsApp yazışmalarını, görüşme notlarını, tapu/ada-parsel bilgilerini veya portföy şartlarını buraya yapıştırın veya yazın..."
-                    : "Paste or type WhatsApp logs, meeting notes, deed/parcel info, or portfolio terms here..."
-                }
+                placeholder="Paste or type meeting notes, conversation transcripts, deed/parcel info, or portfolio terms here..."
                 rows={9}
                 className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:outline-none focus:border-indigo-500 focus:bg-white font-mono leading-relaxed transition-all resize-y min-h-[160px]"
                 disabled={noteSaving}

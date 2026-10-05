@@ -24,7 +24,7 @@ class CreateNoteRequest(BaseModel):
     folder: Optional[str] = None
     tags: Optional[List[str]] = []
     format_with_ai: Optional[bool] = False
-    doc_type: Optional[str] = "whatsapp"
+    doc_type: Optional[str] = "note"
 
 
 class BatchAnalyzeRequest(BaseModel):

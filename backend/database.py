@@ -78,11 +78,11 @@ def save_organizations():
 
 
 def ensure_unknown_org():
-    """Ensure the system 'Genel / Klasörsüzler' organization always exists."""
+    """Ensure the system 'General / Unassigned' organization always exists."""
     if "__unassigned__" not in organizations_db["organizations"]:
         organizations_db["organizations"]["__unassigned__"] = {
-            "name": "Genel / Klasörsüzler",
-            "description": "Bir klasöre veya kuruma atanmamış genel belgeler",
+            "name": "General / Unassigned",
+            "description": "General documents not yet assigned to a specific client portfolio or folder",
             "color": "#6b7280",
             "tags": [],
             "created_at": datetime.now().isoformat(),
@@ -90,11 +90,9 @@ def ensure_unknown_org():
         }
         save_organizations()
     else:
-        curr_name = organizations_db["organizations"]["__unassigned__"].get("name", "")
-        if curr_name in ["Unassigned", "Atanmamış", "Kurumsuz Belgeler", "Kurumsuz Belgeler (Genel Havuz)", ""]:
-            organizations_db["organizations"]["__unassigned__"]["name"] = "Genel / Klasörsüzler"
-            organizations_db["organizations"]["__unassigned__"]["description"] = "Bir klasöre veya kuruma atanmamış genel belgeler"
-            save_organizations()
+        organizations_db["organizations"]["__unassigned__"]["name"] = "General / Unassigned"
+        organizations_db["organizations"]["__unassigned__"]["description"] = "General documents not yet assigned to a specific client portfolio or folder"
+        save_organizations()
 
 
 def init_db():

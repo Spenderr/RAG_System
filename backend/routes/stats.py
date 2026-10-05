@@ -12,8 +12,13 @@ async def get_stats():
     except Exception:
         total_vectors = 0
 
+    user_orgs_count = sum(
+        1 for org in organizations_db["organizations"].values()
+        if not org.get("is_system")
+    )
+
     return {
         "total_documents": len(processed_documents),
         "total_vectors": total_vectors,
-        "total_organizations": len(organizations_db["organizations"]),
+        "total_organizations": user_orgs_count,
     }
