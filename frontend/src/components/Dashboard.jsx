@@ -368,19 +368,14 @@ const Dashboard = ({
         ───────────────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight">
-                Document Warehouse & Intelligence
-              </h1>
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-[10px] font-bold text-emerald-700">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live RAG Engine
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5 font-medium">
-              Autonomous vector knowledge warehouse & conversational intelligence
+            <h1 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight">
+              Document Warehouse & Intelligence
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5 font-medium">
+              Autonomous vector knowledge warehouse
             </p>
           </div>
+
 
           <div className="flex items-center gap-2">
             <button
@@ -589,11 +584,6 @@ const Dashboard = ({
                     <p className="text-[11px] text-slate-400">Model inference & memory metrics</p>
                   </div>
                 </div>
-
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[10px] font-bold">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Live</span>
-                </div>
               </div>
 
               {/* Quick Stat Highlights */}
@@ -702,11 +692,7 @@ const Dashboard = ({
             </div>
 
             {/* Bottom Status Line */}
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="font-medium text-slate-600">OpenAI API connected</span>
-              </span>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end text-xs text-slate-500">
               <button
                 onClick={() => onNavigate?.('upload')}
                 className="font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
@@ -716,6 +702,7 @@ const Dashboard = ({
               </button>
             </div>
           </div>
+
 
         </div>
 
