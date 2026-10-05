@@ -65,7 +65,7 @@ async def get_organizations():
             "description": org.get("description", ""),
             "color": org.get("color", "#6366f1"),
             "tags": org.get("tags", []),
-            "scope": org.get("scope", "personal" if "personal" in org.get("tags", []) or "private" in org.get("tags", []) else "team"),
+            "scope": org.get("scope", "team" if "team" in org.get("tags", []) else "personal"),
             "folders": sorted(list(folders_set)),
             "document_count": doc_count,
             "created_at": org.get("created_at", ""),

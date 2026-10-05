@@ -8,7 +8,7 @@ class CreateOrgRequest(BaseModel):
     color: str = "#6366f1"
     tags: List[str] = []
     folders: List[str] = []
-    scope: str = "team"  # "team" or "personal"
+    scope: str = "personal"
 
 
 class UpdateOrgRequest(BaseModel):
