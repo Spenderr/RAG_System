@@ -5,6 +5,7 @@ const Tour = ({ onClose }) => {
   const [secondsRemaining, setSecondsRemaining] = useState(6);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [revealedSteps, setRevealedSteps] = useState([false, false, false]);
+  const [isExiting, setIsExiting] = useState(false);
 
   // Sequential Staggered Card Reveals
   useEffect(() => {
@@ -42,23 +43,44 @@ const Tour = ({ onClose }) => {
 
   const progressPercent = Math.min(100, Math.round(((6 - secondsRemaining) / 6) * 100));
 
+  // Elegant, Slow Fade-Out Exit
+  const handleStartExploring = () => {
+    if (!isUnlocked || isExiting) return;
+    setIsExiting(true);
+    setTimeout(() => {
+      onClose();
+    }, 650);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-      {/* Backdrop */}
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-700 ease-in-out ${
+        isExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      }`}
+    >
+      {/* Backdrop with Slow Fade-Out */}
       <div
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
-        onClick={isUnlocked ? onClose : undefined}
+        className={`absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-all duration-700 ease-in-out ${
+          isExiting ? 'opacity-0 backdrop-blur-none' : 'opacity-100'
+        }`}
+        onClick={isUnlocked ? handleStartExploring : undefined}
       />
 
-      {/* Card Modal */}
-      <div className="relative w-[480px] max-w-[94vw] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200">
+      {/* Card Modal with Smooth Scale & Fade-Out */}
+      <div
+        className={`relative w-[480px] max-w-[94vw] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10 transition-all duration-700 ease-out transform ${
+          isExiting
+            ? 'opacity-0 scale-95 translate-y-6'
+            : 'opacity-100 scale-100 translate-y-0 animate-in zoom-in-95 duration-200'
+        }`}
+      >
         {/* Top Gradient Accent */}
         <div className="h-1.5 bg-gradient-to-r from-indigo-600 via-violet-600 to-emerald-500" />
 
         {/* Close Button */}
         {isUnlocked && (
           <button
-            onClick={onClose}
+            onClick={handleStartExploring}
             className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors z-10 cursor-pointer"
             title="Close"
           >
@@ -81,7 +103,7 @@ const Tour = ({ onClose }) => {
             </p>
           </div>
 
-          {/* 3 Bold Sequentially Animated Cards (No subtext paragraphs) */}
+          {/* 3 Bold Sequentially Animated Cards */}
           <div className="space-y-3">
             {/* Step 1 */}
             <div
@@ -172,10 +194,10 @@ const Tour = ({ onClose }) => {
           </div>
 
           <button
-            onClick={onClose}
-            disabled={!isUnlocked}
+            onClick={handleStartExploring}
+            disabled={!isUnlocked || isExiting}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer ${
-              isUnlocked
+              isUnlocked && !isExiting
                 ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/25 active:scale-95'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
