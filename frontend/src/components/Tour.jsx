@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, X, Upload, Sparkles, MessageSquare, Bot, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, X, Upload, Sparkles, MessageSquare, Bot, Clock, CheckCircle2, Users } from 'lucide-react';
 
 const Tour = ({ onClose }) => {
   const [secondsRemaining, setSecondsRemaining] = useState(6);
@@ -68,7 +68,7 @@ const Tour = ({ onClose }) => {
 
       {/* Card Modal with Smooth Scale & Fade-Out */}
       <div
-        className={`relative w-[480px] max-w-[94vw] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10 transition-all duration-700 ease-out transform ${
+        className={`relative w-[500px] max-w-[94vw] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col z-10 transition-all duration-700 ease-out transform ${
           isExiting
             ? 'opacity-0 scale-95 translate-y-6'
             : 'opacity-100 scale-100 translate-y-0 animate-in zoom-in-95 duration-200'
@@ -93,13 +93,13 @@ const Tour = ({ onClose }) => {
           <div className="space-y-1.5 text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[11px] font-extrabold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Live Demo Environment</span>
+              <span>Team Knowledge Hub · Live Demo</span>
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              Autonomous Document Intelligence
+              Collaborative Document Intelligence
             </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Self-organizing document warehouse with grounded AI search.
+            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+              Build a shared vector warehouse with your team and query across all portfolios.
             </p>
           </div>
 
@@ -113,16 +113,21 @@ const Tour = ({ onClose }) => {
                   : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
               }`}
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3.5 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Upload className="w-5 h-5" />
+                  <Users className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-bold text-slate-900">
-                  1. Upload Any File
-                </span>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-slate-900 block truncate">
+                    1. Upload With Your Team
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium block truncate">
+                    You & colleagues add portfolios to a shared library
+                  </span>
+                </div>
               </div>
               <span className="text-[10px] font-bold tracking-wide text-blue-700 bg-blue-100/90 px-2.5 py-1 rounded-lg shrink-0">
-                PDF · Photo · Note
+                Shared Hub
               </span>
             </div>
 
@@ -134,13 +139,18 @@ const Tour = ({ onClose }) => {
                   : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
               }`}
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3.5 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                   <Bot className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-bold text-slate-900">
-                  2. AI Auto-Naming & Folders
-                </span>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-slate-900 block truncate">
+                    2. Autonomous Organization
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium block truncate">
+                    AI auto-names files, tags folders & indexes vectors
+                  </span>
+                </div>
               </div>
               <span className="text-[10px] font-bold tracking-wide text-violet-700 bg-violet-100/90 px-2.5 py-1 rounded-lg shrink-0">
                 Auto Stored
@@ -155,16 +165,21 @@ const Tour = ({ onClose }) => {
                   : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
               }`}
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3.5 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                   <MessageSquare className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-bold text-slate-900">
-                  3. Ask Anything via AI Chat
-                </span>
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-slate-900 block truncate">
+                    3. Query Across All Portfolios
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium block truncate">
+                    Instant answers with grounded source citations
+                  </span>
+                </div>
               </div>
               <span className="text-[10px] font-bold tracking-wide text-emerald-700 bg-emerald-100/90 px-2.5 py-1 rounded-lg shrink-0">
-                Grounded Citations
+                Grounded AI
               </span>
             </div>
           </div>

@@ -10,7 +10,7 @@
 [![ChromaDB](https://img.shields.io/badge/Vector_DB-ChromaDB-purple)](https://www.trychroma.com/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o_&_Embeddings-412991?logo=openai&logoColor=white)](https://openai.com/)
 
-**Transform chaotic documents, messy image scans, and unstructured notes into an autonomous, self-organizing vector warehouse with grounded AI conversational intelligence.**
+**Transform chaotic documents, messy image scans, and unstructured notes into an autonomous, collaborative vector warehouse for you and your team with grounded AI conversational intelligence.**
 
 </div>
 
@@ -25,7 +25,7 @@ https://github.com/user-attachments/assets/acef8830-4b03-47d4-8982-b15625b8beed
 
 ## Overview: What is MainChunk?
 
-**MainChunk** is an end-to-end, production-grade **Retrieval-Augmented Generation (RAG)** platform designed to solve the document chaos experienced by modern businesses.
+**MainChunk** is an end-to-end, production-grade **Retrieval-Augmented Generation (RAG)** platform designed to solve document chaos and information silos experienced by modern teams and organizations.
 
 Traditional storage solutions (like cloud drives or shared folders) are static and passive: files arrive with meaningless names (`IMG_9021.PNG`, `scan_1.pdf`), contents remain unindexed, and finding precise answers requires manual reading across hundreds of pages.
 
@@ -34,6 +34,43 @@ Traditional storage solutions (like cloud drives or shared folders) are static a
 2. **Dense Vector Indexing:** Documents are cleaned, split into semantically coherent chunks, embedded via OpenAI `text-embedding-3-small`, and indexed in a local high-performance **ChromaDB** vector database.
 3. **Grounded AI Assistant:** When users ask questions in natural language, MainChunk retrieves the most relevant semantic chunks and synthesizes accurate, hallucination-free answers backed by **clickable inline source citations**.
 4. **Interactive Full-Screen Document Viewer:** Clicking any citation or document card immediately opens an edge-to-edge, full-screen document viewer with **instant Left/Right arrow key navigation** across all files in that portfolio.
+
+---
+
+## Shared Team Knowledge Warehouse & Multi-Portfolio Collaboration
+
+MainChunk transforms fragmented files across different team members into a **centralized, collaborative vector library**. 
+
+Instead of team members keeping files trapped in personal drives or local downloads, **MainChunk acts as the shared brain of your organization**:
+
+```mermaid
+flowchart LR
+    subgraph Team["Collaborative Team Workspaces"]
+        U1["Team Member A<br/>Residential Deeds & Leases"]
+        U2["Team Member B<br/>Commercial Contracts & Terms"]
+        U3["Team Member C<br/>Architectural Plans & Audio Memos"]
+    end
+
+    subgraph Warehouse["MainChunk Centralized Warehouse"]
+        AIOrg["Autonomous Ingestion Engine<br/>Auto-Naming · Chunking · Tagging"]
+        VectorDB[("ChromaDB Vector Index<br/>Dense Embeddings & Metadata")]
+        AIOrg --> VectorDB
+    end
+
+    subgraph Intelligence["Unified Team Retrieval"]
+        Chat["Grounded AI Assistant<br/>Cross-Portfolio Answers & Citations"]
+    end
+
+    Team -->|Upload Documents & Notes| AIOrg
+    VectorDB --> Intelligence
+    Intelligence -.->|Instant Answers for the Entire Team| Team
+```
+
+### Key Team Collaboration Capabilities:
+- **Collaborative Multi-Portfolio Library:** You upload your client files, property deeds, and folders; your colleagues upload their supplier contracts, lease agreements, and meeting transcripts. MainChunk unifies them into a single, structured digital warehouse.
+- **Cross-Portfolio Global Search & AI Synthesis:** Anyone on your team can query across all portfolios simultaneously without needing to know who uploaded what or which folder it lives in (e.g., *"Compare penalty clauses across all commercial leases uploaded by the team"*).
+- **Grounded Source Accountability:** When the AI answers any team inquiry, it provides verifiable clickable source pills linking directly to the specific page and document, ensuring total transparency and zero hallucinations.
+- **Unified Note & Audio Transcription:** Voice memos, quick meeting notes, and OCR image scans uploaded by different team members become immediately searchable across the shared vector space.
 
 ---
 

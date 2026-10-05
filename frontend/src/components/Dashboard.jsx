@@ -372,7 +372,7 @@ const Dashboard = ({
               Document Warehouse & Intelligence
             </h1>
             <p className="text-xs text-slate-400 mt-0.5 font-medium">
-              Autonomous vector knowledge warehouse
+              Autonomous vector knowledge warehouse & shared team library
             </p>
           </div>
 
