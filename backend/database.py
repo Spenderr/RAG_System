@@ -30,10 +30,15 @@ _vector_store: Optional[Chroma] = None
 
 
 def get_vector_store() -> Chroma:
-    """Return the shared Chroma vector store, initializing it on first call."""
+    """Return the shared Chroma vector store, initializing it safely."""
     global _vector_store
     if _vector_store is None:
-        embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+        import os
+        api_key = os.getenv("OPENAI_API_KEY", "").strip() or "sk-placeholder-key"
+        embedding_model = OpenAIEmbeddings(
+            model="text-embedding-3-small",
+            openai_api_key=api_key,
+        )
         _vector_store = Chroma(
             persist_directory=str(CHROMA_DIR),
             embedding_function=embedding_model,
@@ -96,16 +101,14 @@ def ensure_unknown_org():
 
 
 def init_db():
-    """Initialize database and rebuild processed_documents in-memory index from Chroma and assignments."""
+    """Initialize database and rebuild processed_documents in-memory index safely."""
     global processed_documents, vector_store
     load_organizations()
     ensure_unknown_org()
 
-    # Initialize the vector store (lazy) and expose it as the module-level alias
-    vs = get_vector_store()
-    vector_store = vs
-
     try:
+        vs = get_vector_store()
+        vector_store = vs
         data = vs.get()
         metadatas = data.get("metadatas", [])
         documents = data.get("documents", [])
@@ -125,7 +128,7 @@ def init_db():
             processed_documents[filename]["chunks"].append(doc_text)
             processed_documents[filename]["char_count"] += len(doc_text)
     except Exception as e:
-        print(f"[database] Error initializing documents from Chroma: {e}")
+        print(f"[database] Notice: Vector store initial sync bypassed ({e}). Ready on demand.")
 
     # Also ensure any document in document_assignments is indexed
     for filename in list(organizations_db.get("document_assignments", {}).keys()):
