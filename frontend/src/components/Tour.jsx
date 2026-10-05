@@ -222,3 +222,4 @@ const Tour = ({ onClose }) => {
 };
 
 export default Tour;
+

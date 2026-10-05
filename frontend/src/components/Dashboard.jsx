@@ -348,42 +348,42 @@ const Dashboard = ({
           <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-2.5 backdrop-blur-sm">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold mb-2 backdrop-blur-sm">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>{isTr ? 'Belge & Bilgi Asistanı · Deponuz İçin Akıllı AI' : 'Document & Info Assistant · An AI Assistant for Your Warehouse'}</span>
+                  <span>Autonomous RAG Engine</span>
                 </div>
-                <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-                  {isTr ? 'Belge Deposu & Bilgi Merkezi 🏛️' : 'Document Warehouse & AI Center 🏛️'}
+                <h1 className="text-2xl lg:text-3xl font-black text-white tracking-tight">
+                  Document Warehouse & Intelligence
                 </h1>
-                <p className="text-xs lg:text-sm text-slate-300 mt-1 max-w-xl">
-                  Land deeds, contractor agreements, commercial contracts, and client memos are stored, analyzed, and ready for query.
+                <p className="text-xs lg:text-sm text-slate-300 mt-1 max-w-lg font-medium">
+                  Search, classify, and query all your files and notes with grounded AI.
                 </p>
               </div>
 
               {/* Quick Actions in Hero */}
-              <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
                 <button
                   onClick={() => onNavigate?.('upload')}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 active:scale-95 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Upload Files</span>
                 </button>
                 <button
                   onClick={() => onOpenNoteModal?.()}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>Add Note / Text</span>
+                  <span>Add Note</span>
                 </button>
                 <button
                   onClick={() => onNavigate?.('organizations')}
-                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-sm border border-white/15 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-sm border border-white/15 transition-all cursor-pointer"
                 >
                   <Building2 className="w-4 h-4" />
-                  <span>Portfolio Explorer</span>
+                  <span>Explorer</span>
                 </button>
               </div>
             </div>
@@ -395,7 +395,7 @@ const Dashboard = ({
                 <input
                   value={searchPrompt}
                   onChange={(e) => setSearchPrompt(e.target.value)}
-                  placeholder="Ask your Document & Info Assistant... (e.g. What are the Paris property deed details and agreement terms?)"
+                  placeholder="Ask anything across your documents... (e.g. Paris deed terms, rental price, candidate skills)"
                   className="w-full bg-white/10 hover:bg-white/[0.14] focus:bg-white/15 border border-white/20 focus:border-indigo-400 rounded-2xl py-3.5 pl-12 pr-28 text-xs lg:text-sm text-white placeholder:text-slate-400 focus:outline-none transition-all shadow-inner backdrop-blur-md"
                 />
                 <button
@@ -404,7 +404,7 @@ const Dashboard = ({
                   className="absolute right-2 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Ask</span>
+                  <span>Ask AI</span>
                 </button>
               </div>
             </form>
@@ -425,13 +425,13 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Portfolios / Clients</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Portfolios</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-extrabold text-slate-900">{userOrgs.length}</span>
-              <span className="text-xs text-slate-500 font-medium">active portfolios</span>
+              <span className="text-2xl font-black text-slate-900">{userOrgs.length}</span>
+              <span className="text-xs text-slate-500 font-medium">active workspaces</span>
             </div>
-            <div className="mt-2 text-[11px] text-indigo-600 font-medium flex items-center gap-1">
-              <span>View in Explorer</span>
+            <div className="mt-2 text-[11px] text-indigo-600 font-bold flex items-center gap-1">
+              <span>View Portfolios</span>
               <ChevronRight className="w-3 h-3" />
             </div>
           </div>
@@ -446,12 +446,12 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sub-Folders & Shelves</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Folders</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-extrabold text-slate-900">{totalFoldersCount}</span>
-              <span className="text-xs text-slate-500 font-medium">organized folders</span>
+              <span className="text-2xl font-black text-slate-900">{totalFoldersCount}</span>
+              <span className="text-xs text-slate-500 font-medium">categories</span>
             </div>
-            <div className="mt-2 text-[11px] text-amber-600 font-medium flex items-center gap-1">
+            <div className="mt-2 text-[11px] text-amber-600 font-bold flex items-center gap-1">
               <span>Browse Folders</span>
               <ChevronRight className="w-3 h-3" />
             </div>
@@ -467,12 +467,12 @@ const Dashboard = ({
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 transition-colors" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Document & Note Archive</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Documents & Notes</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-extrabold text-slate-900">{stats.documents}</span>
-              <span className="text-xs text-slate-500 font-medium">total files & notes</span>
+              <span className="text-2xl font-black text-slate-900">{stats.documents}</span>
+              <span className="text-xs text-slate-500 font-medium">indexed files</span>
             </div>
-            <div className="mt-2 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+            <div className="mt-2 text-[11px] text-emerald-600 font-bold flex items-center gap-1">
               <span>Upload & Chat</span>
               <ChevronRight className="w-3 h-3" />
             </div>
@@ -636,15 +636,15 @@ const Dashboard = ({
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 <span>
                   {documents.length > 0
-                    ? (isTr ? 'Arsa, kat karşılığı ve tüm tapular AI hafızasında' : 'All deeds, parcel terms & notes indexed in AI memory')
-                    : (isTr ? 'Deponuz hazır · İlk belgenizi yükleyerek AI analizini başlatın' : 'Warehouse ready · Upload your first document to activate AI analysis')}
+                    ? 'All documents indexed in vector memory'
+                    : 'Upload files to activate AI analysis'}
                 </span>
               </span>
               <button
                 onClick={() => onNavigate?.('organizations')}
-                className="font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                className="font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>{isTr ? 'Portföylerde İncele' : 'Browse in Portfolios'}</span>
+                <span>View Portfolios</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
@@ -659,16 +659,16 @@ const Dashboard = ({
                     <BarChart3 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">{isTr ? 'Portföy Hacim Dağılımı' : 'Portfolio Volume Breakdown'}</h2>
-                    <p className="text-[11px] text-slate-400">{isTr ? 'Müşteri portföylerindeki belge yoğunluğu' : 'Document distribution across client portfolios'}</p>
+                    <h2 className="text-sm font-bold text-slate-900">Portfolio Breakdown</h2>
+                    <p className="text-[11px] text-slate-400">Files per portfolio</p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => onNavigate?.('organizations')}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
                 >
-                  <span>{isTr ? 'Gezginde Aç' : 'Open Explorer'}</span>
+                  <span>Explorer</span>
                   <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
@@ -678,14 +678,14 @@ const Dashboard = ({
                 {orgBreakdown.length === 0 ? (
                   <div className="text-center py-7 px-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400">
                     <Building2 className="w-7 h-7 text-slate-300 mx-auto mb-1.5 opacity-70" />
-                    <p className="font-semibold text-slate-600">{isTr ? 'Henüz aktif portföy bulunmuyor' : 'No active portfolios created yet'}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{isTr ? 'Belgelerinizi gruplamak için portföy oluşturabilirsiniz.' : 'Create portfolios to organize and group your documents.'}</p>
+                    <p className="font-semibold text-slate-600">No portfolios created yet</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Create portfolios to group your documents.</p>
                     <button
                       onClick={() => onNavigate?.('organizations')}
                       className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{isTr ? 'İlk Portföyü Oluştur' : 'Create First Portfolio'}</span>
+                      <span>Create Portfolio</span>
                     </button>
                   </div>
                 ) : (
@@ -706,14 +706,14 @@ const Dashboard = ({
                           </span>
                           {org.foldersCount > 0 && (
                             <span className="text-[10px] text-slate-400 font-medium">
-                              ({org.foldersCount} {isTr ? 'klasör' : 'folders'})
+                              ({org.foldersCount} folders)
                             </span>
                           )}
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="font-extrabold text-slate-900 font-mono text-xs">
-                            {org.count} {isTr ? 'doküman' : 'docs'}
+                            {org.count} docs
                           </span>
                           <span className="text-[10px] font-bold text-slate-500 font-mono">
                             %{org.percent}
@@ -741,13 +741,13 @@ const Dashboard = ({
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-violet-500" />
-                <span>{isTr ? `Toplam ${stats.vectors} RAG parçası (Chunks) hazır` : `Total ${stats.vectors} RAG chunks embedded and active`}</span>
+                <span>Total {stats.vectors} vectors embedded</span>
               </span>
               <button
                 onClick={() => onNavigate?.('upload')}
-                className="font-semibold text-violet-600 hover:text-violet-700 flex items-center gap-1 cursor-pointer"
+                className="font-bold text-violet-600 hover:text-violet-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>{isTr ? 'AI ile Sorgula' : 'Query with AI'}</span>
+                <span>Ask AI</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
@@ -762,13 +762,13 @@ const Dashboard = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-indigo-600" />
-              <h2 className="text-sm font-bold text-slate-900">{t('activePortfoliosTitle')}</h2>
+              <h2 className="text-sm font-bold text-slate-900">Active Portfolios</h2>
             </div>
             <button
               onClick={() => onNavigate?.('organizations')}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
             >
-              <span>{isTr ? 'Tümünü Gör' : 'View All'}</span>
+              <span>View All</span>
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -778,18 +778,16 @@ const Dashboard = ({
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
                 <Building2 className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-slate-800">{isTr ? 'Henüz Portföy Oluşturulmadı' : 'No Portfolios Created Yet'}</h3>
+              <h3 className="text-sm font-bold text-slate-800">No Portfolios Created Yet</h3>
               <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
-                {isTr
-                  ? 'Müşterileriniz veya projeleriniz için portföyler ve alt klasörler oluşturarak belgelerinizi düzenleyebilirsiniz.'
-                  : 'Organize your documents by creating client portfolios and sub-folders in Portfolio Explorer.'}
+                Create client portfolios and sub-folders in Portfolio Explorer.
               </p>
               <button
                 onClick={() => onNavigate?.('organizations')}
                 className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>{isTr ? 'Yeni Portföy Oluştur' : 'Create New Portfolio'}</span>
+                <span>Create Portfolio</span>
               </button>
             </div>
           ) : (
@@ -819,19 +817,19 @@ const Dashboard = ({
                             {org.description ? (
                               <p className="text-[10px] text-slate-400 truncate">{org.description}</p>
                             ) : (
-                              <p className="text-[10px] text-slate-400">{isTr ? 'Özel müşteri portföyü' : 'Client portfolio'}</p>
+                              <p className="text-[10px] text-slate-400">Client portfolio</p>
                             )}
                           </div>
                         </div>
                         <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
-                          {orgDocCount} {isTr ? 'doküman' : 'docs'}
+                          {orgDocCount} docs
                         </span>
                       </div>
 
                       {/* Folder Pills in Card */}
                       {orgFolders.length > 0 ? (
                         <div className="mt-3">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">{isTr ? 'Klasörler' : 'Folders'}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Folders</p>
                           <div className="flex flex-wrap gap-1">
                             {orgFolders.map(folder => (
                               <span
@@ -845,12 +843,12 @@ const Dashboard = ({
                           </div>
                         </div>
                       ) : (
-                        <p className="text-[10px] text-slate-400 mt-2 italic">{isTr ? 'Henüz klasör oluşturulmadı' : 'No sub-folders created yet'}</p>
+                        <p className="text-[10px] text-slate-400 mt-2 italic">No folders yet</p>
                       )}
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
-                      <span>{isTr ? 'Dosyaları Gezginle Aç' : 'Open in Explorer'}</span>
+                      <span>Open in Explorer</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
@@ -861,7 +859,7 @@ const Dashboard = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            6. RECENT DOCUMENTS & QUICK WHATSAPP INTAKE
+            6. RECENT DOCUMENTS & QUICK NOTE INTAKE
         ───────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Left: Recent Documents Table (2 columns wide) */}
@@ -869,20 +867,20 @@ const Dashboard = ({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-500" />
-                <h2 className="text-sm font-bold text-slate-900">{t('recentDocsTitle')}</h2>
+                <h2 className="text-sm font-bold text-slate-900">Recent Documents & Records</h2>
               </div>
               <button
                 onClick={() => onNavigate?.('organizations')}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>{t('viewAllDocs')}</span>
+                <span>View All</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
 
             {documents.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-xs">
-                {t('noDocsYet')}
+                No documents uploaded yet
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
@@ -951,9 +949,9 @@ const Dashboard = ({
                 <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center mb-3 backdrop-blur-xs">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-sm font-bold">Quick Note & Memo Intake</h3>
-                <p className="text-xs text-emerald-100 mt-1.5 leading-relaxed">
-                  Log client memos, meeting transcripts, or price updates; your AI Assistant organizes them immediately into vector storage.
+                <h3 className="text-sm font-bold">Quick Note & Memo</h3>
+                <p className="text-xs text-emerald-100 mt-1 leading-relaxed">
+                  Add quick notes directly to AI vector storage.
                 </p>
               </div>
 
@@ -963,13 +961,13 @@ const Dashboard = ({
                   className="w-full py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-98 flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add Note / Text</span>
+                  <span>Add Note</span>
                 </button>
                 <button
                   onClick={() => onNavigate?.('upload')}
                   className="w-full py-2 bg-emerald-700/60 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1"
                 >
-                  <span>Upload & AI Center</span>
+                  <span>Go to Upload</span>
                   <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
@@ -977,12 +975,12 @@ const Dashboard = ({
 
             {/* Warehouse Quick Summary Chip */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs">
-              <div className="flex items-center gap-2.5 mb-2">
+              <div className="flex items-center gap-2.5 mb-1.5">
                 <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                <h4 className="text-xs font-bold text-slate-900">Repository Status</h4>
+                <h4 className="text-xs font-bold text-slate-900">Vector Engine</h4>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                All vector embeddings stored locally with Chroma DB. OpenAI embedding engine and cosine similarity search are active.
+                ChromaDB vector store and OpenAI embeddings active.
               </p>
             </div>
           </div>
