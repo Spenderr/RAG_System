@@ -67,8 +67,8 @@ const translations = {
     dashSubFoldersDesc: 'Nested portfolio groups',
 
     // Real Estate Chart
-    chartTitle: 'Property & Portfolio Asset Breakdown',
-    chartSubtitle: 'Automated AI classification by real estate property type across all portfolios',
+    chartTitle: 'Property Asset Breakdown',
+    chartSubtitle: 'By asset variety & document type',
     chartTotalRecords: 'Total Records',
     chartAllCategories: 'All Property Types',
     chartCategoryHint: 'Hover or click on property types to highlight distribution',

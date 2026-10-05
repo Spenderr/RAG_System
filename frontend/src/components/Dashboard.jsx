@@ -498,15 +498,6 @@ const Dashboard = ({
                     <p className="text-[11px] text-slate-400">{t('chartSubtitle')}</p>
                   </div>
                 </div>
-
-                {/* Dominant Highlight Badge */}
-                {categoryBreakdown.dominant && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200/80 text-orange-800 text-xs font-bold shadow-2xs">
-                    <span>🏆 Top:</span>
-                    <span className="font-extrabold">{categoryBreakdown.dominant.label}</span>
-                    <span className="text-orange-600 font-mono font-black">(%{categoryBreakdown.dominant.percent})</span>
-                  </div>
-                )}
               </div>
 
               {/* Chart Visual & Legend Container */}
@@ -650,90 +641,79 @@ const Dashboard = ({
             </div>
           </div>
 
-          {/* Chart 2: Portfolios / Organizations Share (Horizontal Bars) */}
+          {/* Chart 2 Replacement: AI & RAG Engine Telemetry */}
           <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <Cpu className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">Portfolio Breakdown</h2>
-                    <p className="text-[11px] text-slate-400">Files per portfolio</p>
+                    <h2 className="text-sm font-bold text-slate-900">RAG Engine Telemetry</h2>
+                    <p className="text-[11px] text-slate-400">Live intelligence pipeline</p>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => onNavigate?.('organizations')}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Explorer</span>
-                  <ChevronRight className="w-3 h-3" />
-                </button>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[10px] font-bold">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Active</span>
+                </div>
               </div>
 
-              {/* Horizontal Bar Chart List */}
-              <div className="mt-4 space-y-3">
-                {orgBreakdown.length === 0 ? (
-                  <div className="text-center py-7 px-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400">
-                    <Building2 className="w-7 h-7 text-slate-300 mx-auto mb-1.5 opacity-70" />
-                    <p className="font-semibold text-slate-600">No portfolios created yet</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Create portfolios to group your documents.</p>
-                    <button
-                      onClick={() => onNavigate?.('organizations')}
-                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Create Portfolio</span>
-                    </button>
-                  </div>
-                ) : (
-                  orgBreakdown.map((org) => (
-                    <div
-                      key={org.id}
-                      onClick={() => onSelectOrg?.(org.id)}
-                      className="group p-2.5 rounded-xl hover:bg-slate-50/80 transition-all cursor-pointer border border-transparent hover:border-slate-200/80"
-                    >
-                      <div className="flex items-center justify-between text-xs mb-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: org.color }}
-                          />
-                          <span className="font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
-                            {org.name}
-                          </span>
-                          {org.foldersCount > 0 && (
-                            <span className="text-[10px] text-slate-400 font-medium">
-                              ({org.foldersCount} folders)
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-extrabold text-slate-900 font-mono text-xs">
-                            {org.count} docs
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-500 font-mono">
-                            %{org.percent}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Progress Track */}
-                      <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500 group-hover:opacity-90"
-                          style={{
-                            width: `${Math.max(org.percent, 4)}%`,
-                            backgroundColor: org.color,
-                          }}
-                        />
-                      </div>
+              {/* Engine Status Rows */}
+              <div className="space-y-2.5">
+                <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-200/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-indigo-500" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Auto-Organizer</p>
+                      <p className="text-[10px] text-slate-400">GPT-4o Vision & Naming</p>
                     </div>
-                  ))
-                )}
+                  </div>
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                    Autonomous
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-200/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Database className="w-4 h-4 text-violet-500" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Vector Embeddings</p>
+                      <p className="text-[10px] text-slate-400">text-embedding-3-small</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold font-mono text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-100">
+                    1536-dim
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-200/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Layers className="w-4 h-4 text-blue-500" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Vector Database</p>
+                      <p className="text-[10px] text-slate-400">ChromaDB Local Store</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    Cosine
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-200/70 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Grounded Citations</p>
+                      <p className="text-[10px] text-slate-400">Verifiable Source Attribution</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                    100% Grounded
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -741,13 +721,13 @@ const Dashboard = ({
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-violet-500" />
-                <span>Total {stats.vectors} vectors embedded</span>
+                <span className="font-semibold text-slate-700">{stats.vectors} vectors stored</span>
               </span>
               <button
                 onClick={() => onNavigate?.('upload')}
-                className="font-bold text-violet-600 hover:text-violet-700 flex items-center gap-1 cursor-pointer"
+                className="font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
               >
-                <span>Ask AI</span>
+                <span>Launch AI</span>
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
