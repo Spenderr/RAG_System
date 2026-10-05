@@ -126,9 +126,9 @@ mindmap
 
 ## Live Demo
 
-> **Live Demo URL:** `[Coming Soon / Live Link Deployment]`
+> **Live Demo URL:** [https://ragsystem-production-6839.up.railway.app](https://ragsystem-production-6839.up.railway.app)
 >
-> MainChunk is designed to run seamlessly in modern cloud container environments. Test queries, browse sample property portfolios, and experiment with grounded RAG retrieval in real-time.
+> MainChunk is live and running in a cloud container environment. Upload files to test autonomous categorization, search across portfolios, and experience grounded RAG conversational intelligence in real-time.
 
 ---
 
