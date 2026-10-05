@@ -1707,8 +1707,8 @@ const Organizations = ({ initialDocName, initialOrgId, initialScope = 'all', ope
               onClick={() => setScopeFilter('team')}
               className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg transition-all cursor-pointer ${
                 scopeFilter === 'team'
-                  ? 'bg-indigo-600 text-white shadow-2xs font-bold'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-orange-500 text-white shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-orange-600'
               }`}
               title={isTr ? "Ekip portföyleri" : "Team portfolios"}
             >
@@ -1843,12 +1843,12 @@ const Organizations = ({ initialDocName, initialOrgId, initialScope = 'all', ope
                                 {isOrgDropTarget ? (isTr ? 'Buraya Taşı' : 'Move Here') : org.name}
                               </p>
                               {scopeFilter === 'all' && (
-                                <span className={`text-[9px] font-bold px-1 py-0.2 rounded shrink-0 ${
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 uppercase tracking-wider ${
                                   isPersonal
-                                    ? 'bg-purple-50 text-purple-600 border border-purple-200/60'
-                                    : 'bg-blue-50 text-blue-600 border border-blue-200/60'
+                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/70'
+                                    : 'bg-orange-50 text-orange-700 border border-orange-200/80'
                                 }`}>
-                                  {isPersonal ? (isTr ? 'Kişisel' : 'Ekip') : (isTr ? 'Ekip' : 'Team')}
+                                  {isPersonal ? (isTr ? 'Kişisel' : 'Personal') : (isTr ? 'Ekip' : 'Team')}
                                 </span>
                               )}
                             </div>
@@ -2507,15 +2507,15 @@ const Organizations = ({ initialDocName, initialOrgId, initialScope = 'all', ope
                     onClick={() => setNewOrgScope('team')}
                     className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                       newOrgScope === 'team'
-                        ? 'border-indigo-500 bg-indigo-50/90 ring-1 ring-indigo-500 shadow-2xs'
+                        ? 'border-orange-500 bg-orange-50/90 ring-1 ring-orange-500 shadow-2xs'
                         : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <div className={`p-2 rounded-xl shrink-0 ${newOrgScope === 'team' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                    <div className={`p-2 rounded-xl shrink-0 ${newOrgScope === 'team' ? 'bg-orange-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
                       <Users className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">{isTr ? 'Ekip / Ortak' : 'Team / Shared'}</p>
+                      <p className={`text-xs font-bold truncate ${newOrgScope === 'team' ? 'text-orange-950' : 'text-slate-900'}`}>{isTr ? 'Ekip / Ortak' : 'Team / Shared'}</p>
                       <p className="text-[10px] text-slate-500 truncate">{isTr ? 'Tüm ekip erişebilir' : 'Accessible by whole team'}</p>
                     </div>
                   </button>

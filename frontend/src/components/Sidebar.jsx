@@ -82,20 +82,33 @@ const Sidebar = ({ activeView, setActiveView, onShowTour }) => {
 
         {navItems.map((item) => {
           const isActive = activeView === item.id;
+          const isTeam = item.id === 'team_portfolios';
           return (
             <button
               key={item.id}
               onClick={() => setActiveView(item.id)}
               title={!isHovered ? item.label : undefined}
-              className={`w-full flex items-center gap-3 rounded-2xl transition-all duration-200 text-left ${
+              className={`w-full flex items-center gap-3 rounded-2xl transition-all duration-200 text-left cursor-pointer ${
                 isHovered ? 'px-3.5 py-2.5' : 'p-2.5 justify-center'
               } ${
                 isActive
-                  ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/25'
+                  ? isTeam
+                    ? 'bg-orange-500 text-white font-semibold shadow-md shadow-orange-500/25'
+                    : 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/25'
+                  : isTeam
+                  ? 'text-slate-600 hover:text-orange-600 hover:bg-orange-50/80 font-medium'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
               }`}
             >
-              <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+              <item.icon
+                className={`w-5 h-5 shrink-0 ${
+                  isActive
+                    ? 'text-white'
+                    : isTeam
+                    ? 'text-orange-500'
+                    : 'text-slate-400'
+                }`}
+              />
               <span
                 className={`text-xs whitespace-nowrap overflow-hidden transition-all duration-300 ${
                   isHovered ? 'opacity-100 max-w-[170px]' : 'opacity-0 max-w-0 hidden'
